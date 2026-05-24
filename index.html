@@ -130,7 +130,7 @@
                 <a data-nav="profile"><i class="fas fa-user"></i> Профиль</a>
                 <a data-nav="cart" class="cart-nav-btn"><i class="fas fa-shopping-cart"></i> Корзина<span class="cart-badge" id="cartBadge">0</span></a>
             </div>
-            <div class="profile-mini" id="logoutBtn"><div class="avatar-sm" id="headerAvatar">А</div><span id="headerUserName">Алексей</span><i class="fas fa-chevron-down"></i></div>
+            <div class="profile-mini" id="logoutBtn"><div class="avatar-sm" id="headerAvatar">А</div><span id="headerUserName">Илья</span><i class="fas fa-chevron-down"></i></div>
         </div>
     </div>
 
@@ -190,7 +190,7 @@
             { id: 16, category: 'accessory', title: 'Каподастр для гитары Planet Waves', price: 1200, oldPrice: 1600, rating: 4.7, reviews: 430, badge: 'sale', emoji: '🔧', brand: 'Planet Waves', specs: { type: 'Пружинный' }, description: 'Быстрая смена тональности без потери строя.' },
         ];
 
-        let cart = [], favorites = [], currentUser = { name: 'Алексей', avatar: 'А', orders: [] }, currentCategory = 'all', currentSort = 'default', currentSearch = '', maxPrice = 300000;
+        let cart = [], favorites = [], currentUser = { name: 'Илья', avatar: 'А', orders: [] }, currentCategory = 'all', currentSort = 'default', currentSearch = '', maxPrice = 300000;
         function loadData() {
             if(localStorage.getItem('guitarshop_cart')) cart = JSON.parse(localStorage.getItem('guitarshop_cart'));
             if(localStorage.getItem('guitarshop_favorites')) favorites = JSON.parse(localStorage.getItem('guitarshop_favorites'));
