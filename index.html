@@ -178,8 +178,8 @@
         // ⚠️ ИНИЦИАЛИЗАЦИЯ SUPABASE КЛИЕНТА
         // Замените эти параметры значениями из консоли Supabase: Project Settings -> API
         // ==========================================
-        const SUPABASE_URL = 'https://your-project-id.supabase.co'; // Ваш API URL
-        const SUPABASE_ANON_KEY = 'your-anon-public-key-here';     // Ваш Anon Public API-key
+        const SUPABASE_URL = 'https://wethcknsjksvroeymsfl.supabase.co/rest/v1/'; // Ваш API URL
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGhja25zamtzdnJvZXltc2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NzIyNjcsImV4cCI6MjA5NTU0ODI2N30.0ieVTAaNZJxwIrOFSNsoJ9Nldc0nQBV_AhMivCQNlzA';     // Ваш Anon Public API-key
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // Динамический массив товаров, теперь загружается из бд PostgreSQL
