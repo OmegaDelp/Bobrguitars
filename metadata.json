@@ -1,6 +1,0 @@
-{
-  "name": "GuitarShop",
-  "description": "Магазин музыкальных инструментов с интеграцией Supabase для диплома",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
