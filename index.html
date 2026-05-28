@@ -6,6 +6,7 @@
     <title>GuitarShop — магазин музыкальных инструментов</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #FFFFFF; color: #1e1e2a; line-height: 1.4; }
@@ -167,65 +168,110 @@
     </div>
     <footer><div class="container"><p>🎸 GuitarShop — магазин гитар и музыкальных инструментов • Доставка по всей России</p><p>© 2026, GuitarShop | Все права защищены</p></div></footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Инициализация Supabase клиента
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; 
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // --- КОНФИГУРАЦИЯ SUPABASE ---
+        // Замените эти значения на ваши реальные данные из панели Supabase (Project Settings -> API)
+        const SUPABASE_URL = 'ВАШ_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'ВАШ_SUPABASE_ANON_KEY';
 
-        let products = [];
+        // Инициализация экземпляра (защищена от падений при отсутствии ключей)
+        let supabaseInstance = null;
+        if (SUPABASE_URL !== 'ВАШ_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'ВАШ_SUPABASE_ANON_KEY') {
+            supabaseInstance = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        // Локальный массив (служит Fallback-вариантом, если Supabase пуст или не подключен)
+        let products = [
+            { id: 1, category: 'acoustic', title: 'Акустическая гитара Yamaha F310', price: 17900, oldPrice: null, rating: 4.8, reviews: 256, badge: null, emoji: '🎸', brand: 'Yamaha', specs: { type: 'Акустическая', top: 'Ель', back: 'Меранти', neck: 'Нато', scale: '634 мм', strings: '6 струн' }, description: 'Классическая акустическая гитара для начинающих и любителей. Отличное звучание и удобство игры.' },
+            { id: 2, category: 'acoustic', title: 'Акустическая гитара Fender CD-60S', price: 28900, oldPrice: 32900, rating: 4.7, reviews: 189, badge: 'sale', emoji: '🎸', brand: 'Fender', specs: { type: 'Акустическая', top: 'Ель', back: 'Махагони', neck: 'Махагони', scale: '643 мм' }, description: 'Культовая модель Fender с богатым звуком и элегантным дизайном.' },
+            { id: 3, category: 'electric', title: 'Электрогитара Fender Player Stratocaster', price: 89900, oldPrice: null, rating: 4.9, reviews: 412, badge: 'new', emoji: '🎸⚡', brand: 'Fender', specs: { pickups: '3 single-coil', neck: 'Maple', fretboard: 'Pau Ferro', frets: 22 }, description: 'Легендарная Stratocaster американского производства. Универсальное звучание для любых стилей.' },
+            { id: 4, category: 'electric', title: 'Электрогитара Gibson Les Paul Studio', price: 159000, oldPrice: 179000, rating: 4.8, reviews: 298, badge: 'sale', emoji: '🎸🔥', brand: 'Gibson', specs: { pickups: 'Humbucker', neck: 'Mahogany', fretboard: 'Rosewood', frets: 22 }, description: 'Икона рока. Мощный сустейн и узнаваемый тон Les Paul.' },
+            { id: 5, category: 'electric', title: 'Электрогитара Ibanez RG550 Genesis', price: 74900, oldPrice: null, rating: 4.6, reviews: 167, badge: null, emoji: '🎸', brand: 'Ibanez', specs: { pickups: 'H-S-H', neck: 'Wizard', tremolo: 'Edge' }, description: 'Суперстрат для скоростной игры. Идеальна для металла и рока.' },
+            { id: 6, category: 'bass', title: 'Бас-гитара Fender Precision Bass', price: 105000, oldPrice: 120000, rating: 4.9, reviews: 134, badge: 'sale', emoji: '🎸🎵', brand: 'Fender', specs: { pickups: 'Split single-coil', scale: '864 мм', strings: 4 }, description: 'Эталон бас-гитары, записанный на тысячах альбомов.' },
+            { id: 7, category: 'bass', title: 'Бас-гитара Ibanez SR300E', price: 35900, oldPrice: null, rating: 4.5, reviews: 98, badge: null, emoji: '🎸', brand: 'Ibanez', specs: { pickups: 'PowerSpan', active: true }, description: 'Активная бас-гитара с мощным и чистым звуком.' },
+            { id: 8, category: 'ukulele', title: 'Укулеле Kala KA-15S', price: 5900, oldPrice: null, rating: 4.7, reviews: 320, badge: null, emoji: '🪕', brand: 'Kala', specs: { size: 'Soprano', top: 'Mahogany', strings: 'Nylon' }, description: 'Веселое гавайское укулеле. Отличный выбор для начинающих.' },
+            { id: 9, category: 'ukulele', title: 'Укулеле концертное Lanikai LU-21C', price: 8900, oldPrice: 10900, rating: 4.4, reviews: 87, badge: 'sale', emoji: '🪕', brand: 'Lanikai', specs: { size: 'Concert', top: 'Nato', finishing: 'Satin' }, description: 'Более громкое и глубокое звучание, чем сопрано.' },
+            { id: 10, category: 'accessory', title: 'Струны для акустической гитары D\'Addario', price: 890, oldPrice: null, rating: 4.9, reviews: 1500, badge: null, emoji: '🧵', brand: 'D\'Addario', specs: { gauge: '12-53', coating: 'Нет' }, description: 'Комплект струн для акустической гитары. Яркий, сбалансированный тон.' },
+            { id: 11, category: 'accessory', title: 'Чехол для электрогитары Gator Cases', price: 4500, oldPrice: 5500, rating: 4.6, reviews: 203, badge: 'sale', emoji: '🧳', brand: 'Gator', specs: { material: 'Полиуретан', padding: '20 мм' }, description: 'Надежная защита для электрогитары с мягким внутренним покрытием.' },
+            { id: 12, category: 'accessory', title: 'Тюнер хроматический Korg GA-50', price: 1500, oldPrice: null, rating: 4.8, reviews: 670, badge: null, emoji: '🎛️', brand: 'Korg', specs: { accuracy: '±1 цент' }, description: 'Карманный тюнер с большим дисплеем. Просто и точно.' },
+            { id: 13, category: 'acoustic', title: 'Акустическая гитара Cort AD810', price: 13400, oldPrice: null, rating: 4.5, reviews: 145, badge: null, emoji: '🎸', brand: 'Cort', specs: { top: 'Ель', back: 'Махагони' }, description: 'Доступная акустика с отличным соотношением цена/качество.' },
+            { id: 14, category: 'electric', title: 'Электрогитара Squier Affinity Telecaster', price: 29900, oldPrice: 34900, rating: 4.4, reviews: 210, badge: 'sale', emoji: '🎸', brand: 'Squier', specs: { pickups: '2 single-coil', bridge: '6-saddle' }, description: 'Классический стиль и звук Telecaster по доступной цене.' },
+            { id: 15, category: 'bass', title: 'Бас-гитара Yamaha TRBX174', price: 25900, oldPrice: null, rating: 4.3, reviews: 76, badge: null, emoji: '🎸', brand: 'Yamaha', specs: { pickups: 'P/J', active: false }, description: 'Надежный бас для практики и выступлений.' },
+            { id: 16, category: 'accessory', title: 'Каподастр для гитары Planet Waves', price: 1200, oldPrice: 1600, rating: 4.7, reviews: 430, badge: 'sale', emoji: '🔧', brand: 'Planet Waves', specs: { type: 'Пружинный' }, description: 'Быстрая смена тональности без потери строя.' },
+        ];
+
         let cart = [], favorites = [], currentUser = { name: 'Илья', avatar: 'А', orders: [] }, currentCategory = 'all', currentSort = 'default', currentSearch = '', maxPrice = 300000;
 
-        async function fetchProductsFromSupabase() {
-            const { data, error } = await supabase.from('products').select('*');
-            if (error) {
-                console.error('Ошибка загрузки продуктов из Supabase:', error);
-                showToast('❌ Ошибка загрузки базы данных');
-            } else {
-                products = data.map(p => ({
-                    ...p,
-                    oldPrice: p.old_price 
-                }));
+        // --- АСИНХРОННЫЕ ФУНКЦИИ SUPABASE ---
+        async function loadProductsFromSupabase() {
+            if (!supabaseInstance) return;
+            try {
+                const { data, error } = await supabaseInstance.from('products').select('*');
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    products = data.map(p => {
+                        let parsedSpecs = p.specs;
+                        if (typeof p.specs === 'string') {
+                            try { parsedSpecs = JSON.parse(p.specs); } catch(e) {}
+                        }
+                        return {
+                            id: p.id,
+                            category: p.category,
+                            title: p.title,
+                            price: Number(p.price),
+                            oldPrice: p.old_price ? Number(p.old_price) : (p.oldPrice ? Number(p.oldPrice) : null),
+                            rating: Number(p.rating || 5),
+                            reviews: Number(p.reviews || 0),
+                            badge: p.badge || null,
+                            emoji: p.emoji || '🎸',
+                            brand: p.brand || '',
+                            specs: parsedSpecs || {},
+                            description: p.description || ''
+                        };
+                    });
+                }
+            } catch (err) {
+                console.warn('Товары загружены из локального хранилища (Supabase вернет ошибку, если таблицы нет):', err);
             }
         }
 
-        async function fetchOrdersFromSupabase() {
-            if (!currentUser.name) return;
-            const { data, error } = await supabase
-                .from('orders')
-                .select('*')
-                .eq('user_name', currentUser.name)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Ошибка получения заказов из Supabase:', error);
-            } else if (data) {
-                currentUser.orders = data.map(o => ({
-                    id: o.id,
-                    date: new Date(o.created_at).toLocaleDateString('ru-RU'),
-                    items: o.items,
-                    total: o.total,
-                    status: o.status
-                }));
+        async function syncAuthAndOrders() {
+            if (!supabaseInstance) return;
+            try {
+                const { data: { user } } = await supabaseInstance.auth.getUser();
+                if (user) {
+                    currentUser.name = user.user_metadata?.name || user.email.split('@')[0];
+                    currentUser.avatar = currentUser.name[0].toUpperCase();
+                    
+                    // Загружаем заказы текущего пользователя из таблицы 'orders'
+                    const { data: dbOrders, error } = await supabaseInstance
+                        .from('orders')
+                        .select('*')
+                        .eq('user_id', user.id);
+                    
+                    if (!error && dbOrders) {
+                        currentUser.orders = dbOrders.map(o => o.order_data);
+                    }
+                }
+            } catch (e) {
+                console.error('Ошибка синхронизации сессии пользователя:', e);
             }
         }
 
         function loadData() {
             if(localStorage.getItem('guitarshop_cart')) cart = JSON.parse(localStorage.getItem('guitarshop_cart'));
             if(localStorage.getItem('guitarshop_favorites')) favorites = JSON.parse(localStorage.getItem('guitarshop_favorites'));
-            if(localStorage.getItem('guitarshop_user')) {
-                const localUser = JSON.parse(localStorage.getItem('guitarshop_user'));
-                currentUser.name = localUser.name || currentUser.name;
-                currentUser.avatar = localUser.avatar || currentUser.avatar;
-            }
+            if(localStorage.getItem('guitarshop_user')) currentUser = JSON.parse(localStorage.getItem('guitarshop_user'));
+            if(localStorage.getItem('guitarshop_orders')) currentUser.orders = JSON.parse(localStorage.getItem('guitarshop_orders'));
+            if(!currentUser.orders) currentUser.orders = [];
             updateCartBadge(); updateMiniCart();
         }
 
         function saveAll() { 
             localStorage.setItem('guitarshop_cart', JSON.stringify(cart)); 
             localStorage.setItem('guitarshop_favorites', JSON.stringify(favorites)); 
-            localStorage.setItem('guitarshop_user', JSON.stringify({name: currentUser.name, avatar: currentUser.avatar})); 
+            localStorage.setItem('guitarshop_user', JSON.stringify(currentUser)); 
+            localStorage.setItem('guitarshop_orders', JSON.stringify(currentUser.orders)); 
         }
 
         function updateCartBadge() { document.getElementById('cartBadge').innerText = cart.reduce((s,i)=>s+i.qty,0); }
@@ -240,165 +286,4 @@
                 if(p){ 
                     const price=p.oldPrice||p.price, subtotal=price*i.qty; 
                     total+=subtotal; 
-                    html+=`<div class="mini-cart-item"><span>${p.title.substring(0,20)}... ×${i.qty}</span><span>${subtotal.toLocaleString()} ₽</span></div>`; 
-                } 
-            }); 
-            container.innerHTML=html; 
-            totalEl.innerText=`Итого: ${total.toLocaleString()} ₽`; 
-        }
-
-        function showToast(msg) { const t = document.createElement('div'); t.className='toast'; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
-        function getCategoryName(cat) { return { acoustic:'Акустическая гитара', electric:'Электрогитара', bass:'Бас-гитара', ukulele:'Укулеле', accessory:'Аксессуар' }[cat]||cat; }
-        
-        function addToCart(productId, qty=1) { 
-            const ex = cart.find(c=>c.productId===productId); 
-            if(ex) ex.qty+=qty; else cart.push({ productId, qty }); 
-            saveAll(); updateCartBadge(); updateMiniCart(); 
-            if(document.getElementById('cartPage').classList.contains('active-page')) renderCart(); 
-        }
-
-        function removeFromCart(productId) { cart = cart.filter(c=>c.productId!==productId); saveAll(); }
-        
-        function updateCartQty(productId, delta) { 
-            const item = cart.find(c=>c.productId===productId); 
-            if(item) { 
-                item.qty+=delta; 
-                if(item.qty<=0) removeFromCart(productId); 
-                saveAll(); updateCartBadge(); updateMiniCart(); renderCart(); renderCatalog(); 
-                if(document.getElementById('productDetailPage').classList.contains('active-page')) { 
-                    renderProductDetail(productId); 
-                } 
-            } 
-        }
-
-        function toggleFavorite(productId) { 
-            if(favorites.includes(productId)) { 
-                favorites = favorites.filter(id=>id!==productId); 
-                showToast('💔 Удалено из избранного'); 
-            } else { 
-                favorites.push(productId); 
-                showToast('❤️ Добавлено в избранное'); 
-            } 
-            saveAll(); renderCatalog(); 
-            if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites(); 
-            if(document.getElementById('productDetailPage').classList.contains('active-page')) { 
-                renderProductDetail(productId); 
-            } 
-        }
-        
-        function renderProductDetail(productId) {
-            const product = products.find(p=>p.id===productId);
-            if(!product) { switchPage('catalog'); return; }
-            const inFav = favorites.includes(product.id); const cartItem = cart.find(c=>c.productId===product.id); const inCart = !!cartItem; const displayPrice = product.oldPrice || product.price;
-            let specsHtml = '<div class="detail-specs"><h3>📋 Характеристики</h3>';
-            if(product.specs) {
-                for(const [k,v] of Object.entries(product.specs)) specsHtml += `<div class="spec-row"><div class="spec-label">${k}:</div><div class="spec-value">${v}</div></div>`;
-            }
-            specsHtml += '</div>';
-            const html = `<div class="product-detail-page"><div class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Вернуться к каталогу</div><div class="detail-grid"><div class="detail-image"><span style="font-size:6rem;">${product.emoji}</span>${product.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':product.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':''}</div><div class="detail-info"><h2>${product.title}</h2><div class="product-rating">${'★'.repeat(Math.floor(product.rating))}${product.rating%1>=0.5?'★':'☆'} ${product.rating} <span>(${product.reviews} отзывов)</span></div><div class="detail-price">${displayPrice.toLocaleString()} ₽${product.oldPrice?`<span class="detail-old-price">${product.oldPrice.toLocaleString()} ₽</span>`:''}</div><div class="detail-description"><strong>Описание:</strong> ${product.description}</div>${specsHtml}<div class="detail-actions"><button class="add-to-cart-btn ${inCart?'in-cart':''}" data-id="${product.id}"><i class="fas ${inCart?'fa-check':'fa-cart-plus'}"></i> ${inCart?'В корзине':'В корзину'}</button><button class="favorite-btn ${inFav?'liked':''}" data-id="${product.id}"><i class="${inFav?'fas':'far'} fa-heart"></i> ${inFav?'В избранном':'В избранное'}</button></div></div></div></div>`;
-            document.getElementById('productDetailPage').innerHTML = html;
-            document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', (e) => { const id = parseInt(e.currentTarget.dataset.id); if(!cart.find(c=>c.productId===id)) { addToCart(id); renderProductDetail(id); renderCatalog(); showToast('🛒 Добавлено в корзину!'); } });
-            document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', (e) => { const id = parseInt(e.currentTarget.dataset.id); toggleFavorite(id); renderProductDetail(id); });
-        }
-        
-        function getFilteredProducts() { 
-            let f = [...products]; 
-            if(currentCategory!=='all') f=f.filter(p=>p.category===currentCategory); 
-            f=f.filter(p=>(p.oldPrice||p.price)<=maxPrice); 
-            if(currentSearch.trim()) { 
-                const q=currentSearch.trim().toLowerCase(); 
-                f=f.filter(p=>p.title.toLowerCase().includes(q)||p.brand.toLowerCase().includes(q)); 
-            } 
-            if(currentSort==='price-asc') f.sort((a,b)=>(a.oldPrice||a.price)-(b.oldPrice||b.price)); 
-            else if(currentSort==='price-desc') f.sort((a,b)=>(b.oldPrice||b.price)-(a.oldPrice||a.price)); 
-            else if(currentSort==='name') f.sort((a,b)=>a.title.localeCompare(b.title,'ru')); 
-            else if(currentSort==='rating') f.sort((a,b)=>b.rating-a.rating); 
-            return f; 
-        }
-        
-        function renderCatalog() {
-            const grid = document.getElementById('productsGrid'); const filtered = getFilteredProducts();
-            if(!filtered.length) { grid.innerHTML='<div class="empty-state"><i class="fas fa-search"></i><p>Товары не найдены.</p></div>'; return; }
-            let html = ''; 
-            filtered.forEach(p=>{ 
-                const inFav=favorites.includes(p.id), cartItem=cart.find(c=>c.productId===p.id), displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:'', badgeHtml=p.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':p.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':'';
-                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button><span style="font-size:4rem;">${p.emoji}</span></div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand}</div><div class="product-title">${p.title}</div><div class="product-rating">${'★'.repeat(Math.floor(p.rating))}${p.rating%1>=0.5?'★':'☆'} ${p.rating} <span>(${p.reviews})</span></div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
-            }); 
-            grid.innerHTML=html;
-            document.querySelectorAll('.product-card').forEach(card=>{ card.addEventListener('click',(e)=>{ if(e.target.closest('.favorite-btn')||e.target.closest('.add-to-cart-btn')) return; const id=parseInt(card.dataset.id); renderProductDetail(id); switchPage('productDetail'); }); });
-            document.querySelectorAll('.favorite-btn').forEach(btn=>{ btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=parseInt(btn.dataset.id); toggleFavorite(id); renderCatalog(); }); });
-            document.querySelectorAll('.add-to-cart-btn').forEach(btn=>{ btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=parseInt(btn.dataset.id); if(!cart.find(c=>c.productId===id)){ addToCart(id); renderCatalog(); updateCartBadge(); updateMiniCart(); if(document.getElementById('cartPage').classList.contains('active-page')) renderCart(); showToast('🛒 Добавлено в корзину!'); } }); });
-        }
-        
-        function renderCart() { 
-            const container=document.getElementById('cartPage'); 
-            if(!cart.length){ container.innerHTML='<div class="cart-page-container empty-state"><i class="fas fa-shopping-cart"></i><p>Корзина пуста.</p><button class="checkout-btn" style="width:auto;" onclick="switchPage(\'catalog\')">Перейти в каталог</button></div>'; return; } 
-            let html='<div class="cart-page-container"><h2>🛒 Корзина</h2>', total=0; 
-            cart.forEach(i=>{ 
-                const p=products.find(p=>p.id===i.productId); 
-                if(!p) return; 
-                const price=p.oldPrice||p.price; const subtotal=price*i.qty; total+=subtotal; 
-                html+=`<div class="cart-item-row"><div class="cart-item-image">${p.emoji}</div><div class="cart-item-info"><div class="cart-item-title">${p.title}</div><div class="cart-item-price">${price.toLocaleString()} ₽ × ${i.qty} = ${subtotal.toLocaleString()} ₽</div></div><div class="qty-control"><button class="qty-btn" onclick="updateCartQty(${p.id}, -1)">−</button><span class="qty-num">${i.qty}</span><button class="qty-btn" onclick="updateCartQty(${p.id}, 1)">+</button></div><button class="remove-item-btn" onclick="updateCartQty(${p.id}, -${i.qty})"><i class="fas fa-trash-alt"></i></button></div>`; 
-            }); 
-            html+=`<div class="cart-summary"><p>Товаров: ${cart.reduce((s,i)=>s+i.qty,0)} шт.</p><p>Итого: <strong>${total.toLocaleString()} ₽</strong></p><button class="checkout-btn" id="orderBtn" style="width:auto;">Оформить заказ</button></div></div>`; 
-            container.innerHTML=html; 
-            
-            document.getElementById('orderBtn')?.addEventListener('click', async () => { 
-                if(!cart.length) return; 
-                
-                // Создание структуры заказа для записи в БД Supabase
-                const orderData = {
-                    user_name: currentUser.name,
-                    items: cart,
-                    total: total,
-                    status: 'processing'
-                };
-
-                const { data, error } = await supabase.from('orders').insert([orderData]).select();
-
-                if(error) {
-                    console.error('Ошибка сохранения заказа в Supabase:', error);
-                    showToast('❌ Ошибка при оформлении заказа');
-                } else {
-                    cart=[]; 
-                    saveAll(); 
-                    await fetchOrdersFromSupabase();
-                    updateCartBadge(); updateMiniCart(); renderCart(); renderCatalog(); 
-                    showToast('🎉 Заказ оформлен и сохранен в базе!'); 
-                }
-            }); 
-        }
-
-        function renderFavorites() { const container=document.getElementById('favoritesPage'); const favProducts=products.filter(p=>favorites.includes(p.id)); if(!favProducts.length){ container.innerHTML='<div class="cart-page-container empty-state"><i class="far fa-heart"></i><p>В избранном пока ничего нет.</p><button class="checkout-btn" style="width:auto;" onclick="switchPage(\'catalog\')">Перейти в каталог</button></div>'; return; } let html='<h2 style="margin-bottom:20px;">❤️ Избранное</h2><div class="favorites-grid">'; favProducts.forEach(p=>{ const displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:''; html+=`<div class="product-card" data-id="${p.id}"><div class="product-image" style="height:160px;"><button class="favorite-btn liked" data-id="${p.id}"><i class="fas fa-heart"></i></button><span style="font-size:3rem;">${p.emoji}</span></div><div class="product-info"><div class="product-title">${p.title}</div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn" data-id="${p.id}"><i class="fas fa-cart-plus"></i></button></div></div></div>`; }); html+='</div>'; container.innerHTML=html; container.querySelectorAll('.product-card').forEach(card=>{ card.addEventListener('click',(e)=>{ if(e.target.closest('.favorite-btn')||e.target.closest('.add-to-cart-btn')) return; const id=parseInt(card.dataset.id); renderProductDetail(id); switchPage('productDetail'); }); }); container.querySelectorAll('.favorite-btn').forEach(btn=>{ btn.addEventListener('click',()=>{ const id=parseInt(btn.dataset.id); toggleFavorite(id); renderFavorites(); renderCatalog(); }); }); container.querySelectorAll('.add-to-cart-btn').forEach(btn=>{ btn.addEventListener('click',()=>{ const id=parseInt(btn.dataset.id); if(!cart.find(c=>c.productId===id)){ addToCart(id); renderFavorites(); renderCatalog(); updateCartBadge(); updateMiniCart(); showToast('🛒 Добавлено в корзину!'); } }); }); }
-        function renderContacts() { document.getElementById('contactsPage').innerHTML = `<div class="contacts-card"><h2>📞 Контакты</h2><p><i class="fas fa-map-marker-alt"></i> <strong>Адрес:</strong> г. Москва, ул. Музыкальная, д. 7, ТЦ «Аккорд», 2 этаж</p><p><i class="fas fa-phone"></i> <strong>Телефон:</strong> +7 (495) 123-45-67</p><p><i class="fas fa-envelope"></i> <strong>Email:</strong> info@guitarshop.ru</p><p><i class="fas fa-clock"></i> <strong>Часы работы:</strong> Пн-Сб 10:00–21:00, Вс 11:00–19:00</p><div style="margin-top:20px; background:var(--gray-light); border-radius:18px; padding:16px;"><h4>🅿️ Парковка</h4><p>Бесплатная парковка для посетителей магазина на 30 мест.</p></div></div>`; }
-        
-        function renderProfile() { 
-            const ordersHtml = currentUser.orders.length===0?'<p style="color:var(--text-muted);">У вас пока нет заказов.</p>':currentUser.orders.map(o=>`<div class="order-history-item"><div><strong>Заказ #${o.id.toString().slice(-6)}</strong><div style="font-size:0.8rem;">${o.date} • ${o.items.length} поз.</div></div><div>${o.total.toLocaleString()} ₽</div><div>${o.status==='delivered'?'✅ Доставлен':'⏳ В обработке'}</div></div>`).join(''); 
-            document.getElementById('profilePage').innerHTML = `<div class="profile-card"><div class="avatar-sm" style="width:80px; height:80px; font-size:2rem; margin:0 auto; background:var(--primary);">${currentUser.avatar}</div><h2 style="margin-top:12px;">${currentUser.name}</h2><p style="color:var(--text-muted);">Постоянный покупатель</p><div style="display:flex; justify-content:center; gap:32px; margin:20px 0;"><div><strong>${currentUser.orders.length}</strong> заказов</div><div><strong>${favorites.length}</strong> в избранном</div></div></div><h3 style="margin:28px 0 16px;">📦 История заказов</h3><div style="background:white; border-radius:28px; border:1px solid var(--gray-border); padding:20px;">${ordersHtml}</div>`; 
-        }
-        
-        function switchPage(pageId) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page')); document.getElementById(`${pageId}Page`).classList.add('active-page'); document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active')); document.querySelector(`.nav-links a[data-nav="${pageId}"]`)?.classList.add('active'); if(pageId==='catalog') renderCatalog(); else if(pageId==='cart') renderCart(); else if(pageId==='favorites') renderFavorites(); else if(pageId==='contacts') renderContacts(); else if(pageId==='profile') renderProfile(); window.scrollTo({top:0,behavior:'smooth'}); }
-        
-        async function init() { 
-            loadData(); 
-            await fetchProductsFromSupabase(); 
-            await fetchOrdersFromSupabase();
-            
-            renderCatalog(); 
-            document.getElementById('headerAvatar').innerText=currentUser.avatar; 
-            document.getElementById('headerUserName').innerText=currentUser.name; 
-            
-            document.querySelectorAll('.nav-links a[data-nav]').forEach(link=>{ link.addEventListener('click',(e)=>{ e.preventDefault(); switchPage(link.dataset.nav); }); }); 
-            document.querySelectorAll('.menu-item[data-category]').forEach(item=>{ item.addEventListener('click',()=>{ document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); item.classList.add('active'); currentCategory=item.dataset.category; renderCatalog(); if(document.getElementById('catalogPage').classList.contains('active-page')) switchPage('catalog'); }); }); 
-            document.getElementById('priceRange').addEventListener('input',(e)=>{ maxPrice=parseInt(e.target.value); document.getElementById('priceMaxLabel').innerText=maxPrice.toLocaleString()+' ₽'; renderCatalog(); }); 
-            document.getElementById('searchInput').addEventListener('input',(e)=>{ currentSearch=e.target.value; renderCatalog(); }); 
-            document.getElementById('sortSelect').addEventListener('change',(e)=>{ currentSort=e.target.value; renderCatalog(); }); 
-            document.getElementById('miniCheckoutBtn').addEventListener('click',()=>switchPage('cart')); 
-            document.getElementById('logoutBtn').addEventListener('click',()=>{ if(confirm('Очистить все данные и выйти?')){ localStorage.clear(); location.reload(); } }); 
-            document.querySelectorAll('.trending-tag').forEach(tag=>{ tag.addEventListener('click',()=>{ currentSearch=tag.innerText; document.getElementById('searchInput').value=currentSearch; switchPage('catalog'); renderCatalog(); document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); document.querySelector('.menu-item[data-category="all"]').classList.add('active'); currentCategory='all'; }); }); 
-        }
-        
-        document.addEventListener('DOMContentLoaded', init); window.switchPage = switchPage; window.updateCartQty = updateCartQty;
-    </script>
-</body>
-</html>
+                    html+=`<div class="mini-cart-item"><span>${p.title.substring(0,20
