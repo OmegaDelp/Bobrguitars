@@ -197,7 +197,12 @@
                 const { data, error } = await supabase.from('products').select('*');
                 if (error) throw error;
                 
-                products = data || [];
+                // Маппинг snake_case (Supabase) → camelCase (JS)
+                products = (data || []).map(p => ({
+                    ...p,
+                    oldPrice: p.old_price,
+                    imageClass: p.image_class,
+                }));
                 renderCatalog(); // Перерисовываем каталог, когда товары успешно прибыли
             } catch (error) {
                 console.error("Ошибка загрузки товаров из Supabase:", error.message);
