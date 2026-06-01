@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
@@ -164,6 +166,7 @@
             <i class="fas fa-times auth-close" id="closeAuthBtn"></i>
             <h3 id="authTitle">Вход в аккаунт</h3>
             <form id="authForm">
+                <input type="text" id="authName" class="auth-input" placeholder="Ваше Имя" style="display: none;">
                 <input type="email" id="authEmail" class="auth-input" placeholder="Email" required>
                 <input type="password" id="authPassword" class="auth-input" placeholder="Пароль (мин. 6 символов)" required>
                 <button type="submit" class="auth-btn" id="authSubmitBtn">Войти</button>
@@ -215,26 +218,24 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhYnhtYm92ZXd1am54cnlkbmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODYzNTYsImV4cCI6MjA5NTU2MjM1Nn0.3XjKvkjHq7z9hiqaiTs8hHw0caQSdRjMG6UoE251jgU';
         const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
+        // Переменные состояния приложения
         let products = [];
         let cart = []; 
         let favorites = []; 
-        let currentUser = null; // По умолчанию пользователь не авторизован
-        let isSignUpMode = false; // Режим формы auth: false = вход, true = регистрация
+        let currentUser = null; // Будет хранить объект юзера, когда он авторизован (с UUID из базы)
+        let isSignUpMode = false; 
         
         let currentCategory = 'all'; 
         let currentSort = 'default'; 
         let currentSearch = ''; 
         let maxPrice = 300000;
 
+        // Загрузка товаров
         async function fetchProductsFromDB() {
-            if (!supabaseClient) {
-                console.error("Supabase не инициализирован. Проверьте ключи.");
-                return;
-            }
+            if (!supabaseClient) return;
             try {
                 const { data, error } = await supabaseClient.from('products').select('*');
                 if (error) throw error;
-                
                 products = (data || []).map(p => ({
                     ...p,
                     oldPrice: p.old_price,
@@ -243,62 +244,135 @@
                 renderCatalog();
                 updateMiniCart();
             } catch (error) {
-                console.error("Ошибка загрузки товаров из Supabase:", error.message);
-                showToast("❌ Ошибка загрузки каталога");
+                console.error("Ошибка каталога:", error.message);
             }
         }
 
-        // Отслеживание сессии авторизации Supabase Auth
+        // Динамическое отслеживание сессий Supabase Auth
         function initAuthListener() {
             if (!supabaseClient) return;
 
-            // Проверяем текущего юзера сразу при загрузке страницы
-            supabaseClient.auth.getUser().then(({ data: { user } }) => {
-                handleUserChange(user);
-            });
-
-            // Подписываемся на изменения состояния (вход, выход, регистрация)
-            supabaseClient.auth.onAuthStateChange((event, session) => {
+            supabaseClient.auth.onAuthStateChange(async (event, session) => {
                 const user = session ? session.user : null;
-                handleUserChange(user);
+                if (user) {
+                    await handleUserLogin(user);
+                } else {
+                    handleUserLogout();
+                }
             });
         }
 
-        function handleUserChange(user) {
-            const openAuthBtn = document.getElementById('openAuthBtn');
-            const logoutBtn = document.getElementById('logoutBtn');
+        // Срабатывает при успешном входе или обновлении сессии
+        async function handleUserLogin(supabaseUser) {
+            try {
+                // Пытаемся получить имя из вашей таблицы users по динамическому UUID
+                const { data: dbUser, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('id', supabaseUser.id)
+                    .maybeSingle();
 
-            if (user) {
-                // Извлекаем имя из email или user_metadata
-                const name = user.user_metadata?.full_name || user.email.split('@')[0];
+                let name = 'Пользователь';
+                if (dbUser && (dbUser.name || dbUser.username)) {
+                    name = dbUser.name || dbUser.username;
+                } else if (supabaseUser.user_metadata?.full_name) {
+                    name = supabaseUser.user_metadata.full_name;
+                } else {
+                    name = supabaseUser.email.split('@')[0];
+                }
+
                 currentUser = {
-                    id: user.id,
+                    id: supabaseUser.id, // Тот самый динамический строковый UUID
                     name: name,
                     avatar: name.charAt(0).toUpperCase(),
-                    email: user.email,
-                    orders: currentUser?.orders || [] // Сохраняем локальные заказы для демо
+                    email: supabaseUser.email,
+                    orders: []
                 };
-                
-                // Переключаем кнопки в шапке
-                openAuthBtn.style.display = 'none';
-                logoutBtn.style.display = 'flex';
+
+                // Меняем кнопки в шапке сайта
+                document.getElementById('openAuthBtn').style.display = 'none';
+                document.getElementById('logoutBtn').style.display = 'flex';
                 document.getElementById('headerAvatar').innerText = currentUser.avatar; 
                 document.getElementById('headerUserName').innerText = currentUser.name;
-            } else {
-                currentUser = null;
-                openAuthBtn.style.display = 'flex';
-                logoutBtn.style.display = 'none';
+
+                // Загружаем данные этого конкретного пользователя из БД
+                await fetchCartFromDB();
+                await fetchFavoritesFromDB();
+                await fetchOrdersFromDB();
+
+            } catch (err) {
+                console.error("Ошибка обработки профиля:", err.message);
             }
-            
-            // Если мы находимся на вкладке профиля, обновляем её
-            if(document.getElementById('profilePage').classList.contains('active-page')) {
-                renderProfile();
-            }
+
+            if(document.getElementById('profilePage').classList.contains('active-page')) renderProfile();
+            renderCatalog();
         }
 
-        function loadData() {
-            updateCartBadge(); 
+        // Срабатывает при логауте
+        function handleUserLogout() {
+            currentUser = null;
+            cart = [];
+            favorites = [];
+            document.getElementById('openAuthBtn').style.display = 'flex';
+            document.getElementById('logoutBtn').style.display = 'none';
+            updateCartBadge();
             updateMiniCart();
+            renderCatalog();
+            if(document.getElementById('profilePage').classList.contains('active-page')) renderProfile();
+            if(document.getElementById('cartPage').classList.contains('active-page')) renderCart();
+            if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+        }
+
+        // Загрузка корзины авторизованного пользователя
+        async function fetchCartFromDB() {
+            if (!supabaseClient || !currentUser) return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('cart')
+                    .select('*')
+                    .eq('user_id', currentUser.id);
+                if (error) throw error;
+                cart = (data || []).map(c => ({
+                    productId: String(c.product_id),
+                    qty: c.qty
+                }));
+                updateCartBadge();
+                updateMiniCart();
+            } catch (err) { console.error(err); }
+        }
+
+        // Загрузка избранного авторизованного пользователя
+        async function fetchFavoritesFromDB() {
+            if (!supabaseClient || !currentUser) return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('favorites')
+                    .select('product_id')
+                    .eq('user_id', currentUser.id);
+                if (error) throw error;
+                favorites = (data || []).map(f => String(f.product_id));
+                renderCatalog();
+            } catch (err) { console.error(err); }
+        }
+
+        // Загрузка заказов авторизованного пользователя
+        async function fetchOrdersFromDB() {
+            if (!supabaseClient || !currentUser) return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('orders')
+                    .select('*, order_items(*)')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+                if (error) throw error;
+                currentUser.orders = (data || []).map(o => ({
+                    id: o.id,
+                    date: new Date(o.created_at).toLocaleDateString('ru-RU'),
+                    total: o.total_price || o.total,
+                    status: o.status || 'processing',
+                    items: o.order_items || []
+                }));
+            } catch (err) { console.error(err); }
         }
 
         function updateCartBadge() { document.getElementById('cartBadge').innerText = cart.reduce((s,i)=>s+i.qty,0); }
@@ -307,7 +381,7 @@
             const container = document.getElementById('miniCartItems'); 
             const totalEl = document.getElementById('miniCartTotal'); 
             if(!cart.length) { 
-                container.innerHTML='<p style="font-size:0.85rem;">Пока пусто</p>'; 
+                container.innerHTML='<p style="font-size:0.85rem; color:var(--text-muted);">Пока пусто</p>'; 
                 totalEl.innerText='Итого: 0 ₽'; 
                 return; 
             } 
@@ -325,50 +399,60 @@
         }
 
         function showToast(msg) { const t = document.createElement('div'); t.className='toast'; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
-        function getCategoryName(cat) { return { acoustic:'Акустическая гитара', electric:'Электрогитара', bass:'Бас-гитара', ukulele:'Укулеле', accessory:'Аксессуар' }[cat]||cat; }
+        function getCategoryName(cat) { return { acoustic:'Акустическая гитара', electric:'Электрогитара', bass:'Бас-гитара', ukulele:'Укулеле', accessory:'Аксессуары' }[cat]||cat; }
         
-        function addToCart(productId, qty=1) { 
+        // Добавление в корзину с динамическим user_id
+        async function addToCart(productId, qty=1) { 
+            if (!currentUser) { showToast('⚠️ Пожалуйста, войдите для работы с корзиной'); document.getElementById('authModal').classList.add('active'); return; }
             const ex = cart.find(c=>String(c.productId)===String(productId)); 
-            if(ex) ex.qty+=qty; 
-            else cart.push({ productId, qty }); 
+            if(ex) { 
+                ex.qty+=qty; 
+                await supabaseClient.from('cart').update({ qty: ex.qty }).eq('user_id', currentUser.id).eq('product_id', parseInt(productId));
+            } else { 
+                cart.push({ productId, qty }); 
+                await supabaseClient.from('cart').insert([{ user_id: currentUser.id, product_id: parseInt(productId), qty }]);
+            } 
             updateCartBadge(); 
             updateMiniCart(); 
             if(document.getElementById('cartPage').classList.contains('active-page')) renderCart(); 
         }
 
-        function removeFromCart(productId) { 
-            cart = cart.filter(c=>String(c.productId)!==String(productId)); 
-        }
-
-        function updateCartQty(productId, delta) { 
+        // Изменение количества товара
+        async function updateCartQty(productId, delta) { 
+            if (!currentUser) return;
             const item = cart.find(c=>String(c.productId)===String(productId)); 
             if(item) { 
                 item.qty+=delta; 
-                if(item.qty<=0) removeFromCart(productId); 
+                if(item.qty<=0) {
+                    cart = cart.filter(c=>String(c.productId)!==String(productId)); 
+                    await supabaseClient.from('cart').delete().eq('user_id', currentUser.id).eq('product_id', parseInt(productId));
+                } else {
+                    await supabaseClient.from('cart').update({ qty: item.qty }).eq('user_id', currentUser.id).eq('product_id', parseInt(productId));
+                }
                 updateCartBadge(); 
                 updateMiniCart(); 
                 renderCart(); 
                 renderCatalog(); 
-                if(document.getElementById('productDetailPage').classList.contains('active-page')) { 
-                    renderProductDetail(productId); 
-                } 
+                if(document.getElementById('productDetailPage').classList.contains('active-page')) renderProductDetail(productId); 
             } 
         }
 
-        function toggleFavorite(productId) { 
+        // Избранное с динамическим user_id
+        async function toggleFavorite(productId) { 
+            if (!currentUser) { showToast('⚠️ Пожалуйста, войдите для добавления в избранное'); document.getElementById('authModal').classList.add('active'); return; }
             productId = String(productId);
             if(favorites.includes(productId)) { 
                 favorites = favorites.filter(id=>id!==productId); 
+                await supabaseClient.from('favorites').delete().eq('user_id', currentUser.id).eq('product_id', parseInt(productId));
                 showToast('💔 Удалено из избранного'); 
             } else { 
                 favorites.push(productId); 
+                await supabaseClient.from('favorites').insert([{ user_id: currentUser.id, product_id: parseInt(productId) }]);
                 showToast('❤️ Добавлено в избранное'); 
             } 
             renderCatalog(); 
             if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites(); 
-            if(document.getElementById('productDetailPage').classList.contains('active-page')) { 
-                renderProductDetail(productId); 
-            } 
+            if(document.getElementById('productDetailPage').classList.contains('active-page')) renderProductDetail(productId); 
         }
         
         function renderProductDetail(productId) {
@@ -383,8 +467,8 @@
             const html = `<div class="product-detail-page"><div class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Вернуться к каталогу</div><div class="detail-grid"><div class="detail-image ${product.imageClass || ''}"><span style="font-size:6rem;">${product.emoji || '🎸'}</span>${product.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':product.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':''}</div><div class="detail-info"><h2>${product.title}</h2><div class="product-rating">${'★'.repeat(Math.floor(product.rating || 5))}${(product.rating || 5)%1>=0.5?'★':'☆'} ${product.rating || 5} <span>(${product.reviews || 0} отзывов)</span></div><div class="detail-price">${displayPrice.toLocaleString()} ₽${product.oldPrice?`<span class="detail-old-price">${product.oldPrice.toLocaleString()} ₽</span>`:''}</div><div class="detail-description"><strong>Описание:</strong> ${product.description || ''}</div>${specsHtml}<div class="detail-actions"><button class="add-to-cart-btn ${inCart?'in-cart':''}" data-id="${product.id}"><i class="fas ${inCart?'fa-check':'fa-cart-plus'}"></i> ${inCart?'В корзине':'В корзину'}</button><button class="favorite-btn ${inFav?'liked':''}" data-id="${product.id}"><i class="${inFav?'fas':'far'} fa-heart"></i> ${inFav?'В избранном':'В избранное'}</button></div></div></div></div>`;
             document.getElementById('productDetailPage').innerHTML = html;
             
-            document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; if(!cart.find(c=>String(c.productId)===String(id))) { addToCart(id); renderProductDetail(id); renderCatalog(); showToast('🛒 Добавлено в корзину!'); } });
-            document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; toggleFavorite(id); renderProductDetail(id); });
+            document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; addToCart(id); });
+            document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; toggleFavorite(id); });
         }
         
         function getFilteredProducts() { 
@@ -420,209 +504,166 @@
             cart.forEach(i=>{ 
                 const p=products.find(p=>String(p.id)===String(i.productId)); 
                 if(!p) return; 
-                const price=p.oldPrice||p.price; 
-                const subtotal=price*i.qty; 
-                total+=subtotal; 
+                const price=p.oldPrice||p.price; const subtotal=price*i.qty; total+=subtotal; 
                 html+=`<div class="cart-item-row"><div class="cart-item-image ${p.imageClass||''}">${p.emoji || '🎸'}</div><div class="cart-item-info"><div class="cart-item-title">${p.title}</div><div class="cart-item-price">${price.toLocaleString()} ₽ × ${i.qty} = ${subtotal.toLocaleString()} ₽</div></div><div class="qty-control"><button class="qty-btn" onclick="updateCartQty('${p.id}', -1)">−</button><span class="qty-num">${i.qty}</span><button class="qty-btn" onclick="updateCartQty('${p.id}', 1)">+</button></div><button class="remove-item-btn" onclick="updateCartQty('${p.id}', -${i.qty})"><i class="fas fa-trash-alt"></i></button></div>`; 
             }); 
             html+=`<div class="cart-summary"><p>Товаров: ${cart.reduce((s,i)=>s+i.qty,0)} шт.</p><p>Итого: <strong>${total.toLocaleString()} ₽</strong></p><button class="checkout-btn" id="orderBtn" style="width:auto;">Оформить заказ</button></div></div>`; 
             container.innerHTML=html; 
             
-            document.getElementById('orderBtn')?.addEventListener('click',()=>{ 
-                if(!cart.length) return; 
-                if(!currentUser) {
-                    showToast('⚠️ Пожалуйста, войдите в аккаунт для оформления заказа!');
-                    document.getElementById('authModal').classList.add('active');
-                    return;
+            // Создание динамического заказа
+            document.getElementById('orderBtn')?.addEventListener('click', async ()=>{ 
+                if(!cart.length || !currentUser) return; 
+                try {
+                    const { data: orderData, error: orderError } = await supabaseClient
+                        .from('orders')
+                        .insert([{ user_id: currentUser.id, total_price: total, status: 'processing' }])
+                        .select().single();
+                    if (orderError) throw orderError;
+                    
+                    const itemsToInsert = cart.map(item => {
+                        const p = products.find(prod => String(prod.id) === String(item.productId));
+                        return { order_id: orderData.id, product_id: parseInt(item.productId), qty: item.qty, price: p ? (p.oldPrice || p.price) : 0 };
+                    });
+                    await supabaseClient.from('order_items').insert(itemsToInsert);
+                    await supabaseClient.from('cart').delete().eq('user_id', currentUser.id);
+
+                    cart=[]; 
+                    updateCartBadge(); updateMiniCart(); renderCart(); renderCatalog(); 
+                    await fetchOrdersFromDB(); 
+                    showToast('🎉 Заказ успешно оформлен!'); 
+                } catch (err) {
+                    showToast('❌ Ошибка оформления заказа');
                 }
-                currentUser.orders.unshift({ id:Date.now(), date:new Date().toLocaleDateString('ru-RU'), items:[...cart], total, status:'processing' }); 
-                cart=[]; 
-                updateCartBadge(); 
-                updateMiniCart(); 
-                renderCart(); 
-                renderCatalog(); 
-                showToast('🎉 Заказ оформлен!'); 
             }); 
         }
 
         function renderFavorites() { 
-            const container=document.getElementById('favoritesPage'); 
-            const favProducts=products.filter(p=>favorites.includes(String(p.id))); 
+            const container=document.getElementById('favoritesPage'); const favProducts=products.filter(p=>favorites.includes(String(p.id))); 
             if(!favProducts.length){ 
                 container.innerHTML='<div class="cart-page-container empty-state"><i class="far fa-heart"></i><p>В избранном пока ничего нет.</p><button class="checkout-btn" style="width:auto;" onclick="switchPage(\'catalog\')">Перейти в каталог</button></div>'; 
                 return; 
             } 
             let html='<h2 style="margin-bottom:20px;">❤️ Избранное</h2><div class="favorites-grid">'; 
-            favProducts.forEach(p=>{ 
-                const displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:''; 
+            favProducts.forEach(p=>{ const displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:''; 
                 html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.imageClass||''}" style="height:160px;"><button class="favorite-btn liked" data-id="${p.id}"><i class="fas fa-heart"></i></button><span style="font-size:3rem;">${p.emoji || '🎸'}</span></div><div class="product-info"><div class="product-title">${p.title}</div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn" data-id="${p.id}"><i class="fas fa-cart-plus"></i></button></div></div></div>`; 
-            }); 
-            html+='</div>'; 
-            container.innerHTML=html; 
+            }); html+='</div>'; container.innerHTML=html; 
         }
         
-        function renderContacts() { document.getElementById('contactsPage').innerHTML = `<div class="contacts-card"><h2>📞 Контакты</h2><p><i class="fas fa-map-marker-alt"></i> <strong>Адрес:</strong> г. Москва, ул. Музыкальная, д. 7, ТЦ «Аккорд», 2 этаж</p><p><i class="fas fa-phone"></i> <strong>Телефон:</strong> +7 (495) 123-45-67</p><p><i class="fas fa-envelope"></i> <strong>Email:</strong> info@guitarshop.ru</p><p><i class="fas fa-clock"></i> <strong>Часы работы:</strong> Пн-Сб 10:00–21:00, Вс 11:00–19:00</p><div style="margin-top:20px; background:var(--gray-light); border-radius:18px; padding:16px;"><h4>🅿️ Парковка</h4><p>Бесплатная парковка для посетителей магазина на 30 мест.</p></div></div>`; }
+        function renderContacts() { document.getElementById('contactsPage').innerHTML = `<div class="contacts-card"><h2>📞 Контакты</h2><p><i class="fas fa-map-marker-alt"></i> <strong>Адрес:</strong> г. Москва, ул. Музыкальная, д. 7, ТЦ «Аккорд», 2 этаж</p><p><i class="fas fa-phone"></i> <strong>Телефон:</strong> +7 (495) 123-45-67</p><p><i class="fas fa-envelope"></i> <strong>Email:</strong> info@guitarshop.ru</p><p><i class="fas fa-clock"></i> <strong>Часы работы:</strong> Пн-Сб 10:00–21:00, Вс 11:00–19:00</p></div>`; }
         
         function renderProfile() { 
             if (!currentUser) {
-                document.getElementById('profilePage').innerHTML = `<div class="profile-card"><h2>🔒 Личный кабинет</h2><p style="color:var(--text-muted); margin: 16px 0;">Войдите в свой аккаунт, чтобы просматривать историю заказов и управлять профилем.</p><button class="checkout-btn" style="width:auto;" onclick="document.getElementById('authModal').classList.add('active')">Войти на сайт</button></div>`;
+                document.getElementById('profilePage').innerHTML = `<div class="profile-card"><h2>🔒 Личный кабинет</h2><p style="color:var(--text-muted); margin: 16px 0;">Войдите в аккаунт для просмотра истории заказов.</p><button class="checkout-btn" style="width:auto;" onclick="document.getElementById('authModal').classList.add('active')">Войти на сайт</button></div>`;
                 return;
             }
-            const ordersHtml = currentUser.orders.length===0?'<p style="color:var(--text-muted);">У вас пока нет заказов.</p>':currentUser.orders.map(o=>`<div class="order-history-item"><div><strong>Заказ #${o.id.toString().slice(-6)}</strong><div style="font-size:0.8rem;">${o.date} • ${o.items.length} поз.</div></div><div>${o.total.toLocaleString()} ₽</div><div class="${o.status==='delivered'?'status-delivered':'status-processing'}">${o.status==='delivered'?'✅ Доставлен':'⏳ В обработке'}</div></div>`).join(''); document.getElementById('profilePage').innerHTML = `<div class="profile-card"><div class="avatar-sm" style="width:80px; height:80px; font-size:2rem; margin:0 auto; background:var(--primary);">${currentUser.avatar}</div><h2 style="margin-top:12px;">${currentUser.name}</h2><p style="color:var(--text-muted);">${currentUser.email}</p><div style="display:flex; justify-content:center; gap:32px; margin:20px 0;"><div><strong>${currentUser.orders.length}</strong> заказов</div><div><strong>${favorites.length}</strong> в избранном</div></div></div><h3 style="margin:28px 0 16px;">📦 История заказов</h3><div style="background:white; border-radius:28px; border:1px solid var(--gray-border); padding:20px;">${ordersHtml}</div>`; 
+            const ordersHtml = currentUser.orders.length===0?'<p style="color:var(--text-muted);">У вас пока нет заказов.</p>':currentUser.orders.map(o=>`<div class="order-history-item"><div><strong>Заказ #${o.id.toString().slice(-6)}</strong><div style="font-size:0.8rem;">${o.date}</div></div><div>${o.total.toLocaleString()} ₽</div><div>${o.status==='delivered'?'✅ Доставлен':'⏳ В обработке'}</div></div>`).join(''); 
+            document.getElementById('profilePage').innerHTML = `<div class="profile-card"><div class="avatar-sm" style="width:80px; height:80px; font-size:2rem; margin:0 auto; background:var(--primary);">${currentUser.avatar}</div><h2 style="margin-top:12px;">${currentUser.name}</h2><p style="color:var(--text-muted);">${currentUser.email}</p></div><h3 style="margin:28px 0 16px;">📦 История заказов</h3><div style="background:white; border-radius:28px; border:1px solid var(--gray-border); padding:20px;">${ordersHtml}</div>`; 
         }
         
         function switchPage(pageId) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page')); document.getElementById(`${pageId}Page`).classList.add('active-page'); document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active')); document.querySelector(`.nav-links a[data-nav="${pageId}"]`)?.classList.add('active'); if(pageId==='catalog') renderCatalog(); else if(pageId==='cart') renderCart(); else if(pageId==='favorites') renderFavorites(); else if(pageId==='contacts') renderContacts(); else if(pageId==='profile') renderProfile(); window.scrollTo({top:0,behavior:'smooth'}); }
         
-        function init() { 
-            loadData(); 
-            fetchProductsFromDB();
-            initAuthListener(); // Включаем авторизацию
+        async function init() { 
+            await fetchProductsFromDB();
+            initAuthListener(); // Подключаем отслеживание сессии авторизации
 
-            // Управление модальным окном Auth
+            // Открытие / закрытие модалки
             const authModal = document.getElementById('authModal');
-            document.getElementById('openAuthBtn').addEventListener('click', () => {
-                authModal.classList.add('active');
-            });
-            document.getElementById('closeAuthBtn').addEventListener('click', () => {
-                authModal.classList.remove('active');
-            });
+            document.getElementById('openAuthBtn').addEventListener('click', () => authModal.classList.add('active'));
+            document.getElementById('closeAuthBtn').addEventListener('click', () => authModal.classList.remove('active'));
 
             // Переключатель Регистрация / Вход
             const authSwitchBtn = document.getElementById('authSwitchBtn');
             const authTitle = document.getElementById('authTitle');
             const authSubmitBtn = document.getElementById('authSubmitBtn');
-            const authSwitchText = document.getElementById('authSwitchText');
+            const authNameInput = document.getElementById('authName');
 
             authSwitchBtn.addEventListener('click', () => {
                 isSignUpMode = !isSignUpMode;
                 if (isSignUpMode) {
                     authTitle.innerText = 'Регистрация аккаунта';
                     authSubmitBtn.innerText = 'Зарегистрироваться';
-                    authSwitchText.innerHTML = 'Уже есть аккаунт? <span id="authSwitchBtn">Войти</span>';
+                    authNameInput.style.display = 'block';
+                    authNameInput.required = true;
+                    document.getElementById('authSwitchText').innerHTML = 'Уже есть аккаунт? <span id="authSwitchBtn">Войти</span>';
                 } else {
                     authTitle.innerText = 'Вход в аккаунт';
                     authSubmitBtn.innerText = 'Войти';
-                    authSwitchText.innerHTML = 'Нет аккаунта? <span id="authSwitchBtn">Зарегистрироваться</span>';
+                    authNameInput.style.display = 'none';
+                    authNameInput.required = false;
+                    document.getElementById('authSwitchText').innerHTML = 'Нет аккаунта? <span id="authSwitchBtn">Зарегистрироваться</span>';
                 }
-                // Повторно навешиваем клик на динамический span
+                // Навешиваем обработчик на пересозданный span
                 document.getElementById('authSwitchBtn').addEventListener('click', arguments.callee);
             });
 
             // Отправка формы (Авторизация / Регистрация)
             document.getElementById('authForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                if(!supabaseClient) return;
-
                 const email = document.getElementById('authEmail').value;
                 const password = document.getElementById('authPassword').value;
+                const name = document.getElementById('authName').value;
 
                 try {
                     if (isSignUpMode) {
-                        // Регистрация
-                        const { data, error } = await supabaseClient.auth.signUp({ email, password });
-                        if (error) throw error;
-                        showToast('🎉 Регистрация успешна!');
+                        // 1. Регистрация в Supabase Auth
+                        const { data: authData, error: authError } = await supabaseClient.auth.signUp({ email, password });
+                        if (authError) throw authError;
+
+                        if (authData.user) {
+                            // 2. Создаем пользователя в таблице users с его реальным новым UUID id
+                            const { error: dbError } = await supabaseClient
+                                .from('users')
+                                .insert([{ id: authData.user.id, name: name }]);
+                            if (dbError) console.error("Ошибка записи имени в таблицу users:", dbError.message);
+                        }
+                        showToast('🎉 Успешная регистрация!');
                     } else {
-                        // Логин
-                        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                        // Вход по паролю
+                        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
                         if (error) throw error;
                         showToast('🔑 Вы успешно вошли!');
                     }
                     authModal.classList.remove('active');
                     document.getElementById('authForm').reset();
                 } catch (error) {
-                    console.error("Auth error:", error.message);
-                    showToast(`❌ Ошибка: ${error.message}`);
+                    showToast(`❌ ${error.message}`);
                 }
             });
 
-            // Кнопка логаута
+            // Кнопка логаута (Выйти)
             document.getElementById('logoutBtn').addEventListener('click', async () => {
                 if (confirm('Вы уверены, что хотите выйти из профиля?')) {
-                    if (supabaseClient) {
-                        await supabaseClient.auth.signOut();
-                        showToast('🔒 Вы вышли из аккаунта');
-                        switchPage('catalog');
-                    }
+                    await supabaseClient.auth.signOut();
+                    showToast('🔒 Вы вышли из аккаунта');
+                    switchPage('catalog');
                 }
             });
             
-            // Делегирование кликов для сеток товаров
+            // Клики по сетке
             const handleGridClick = (e) => {
                 const favBtn = e.target.closest('.favorite-btn');
-                if (favBtn) {
-                    e.stopPropagation();
-                    toggleFavorite(favBtn.dataset.id);
-                    return;
-                }
-                
+                if (favBtn) { e.stopPropagation(); toggleFavorite(favBtn.dataset.id); return; }
                 const cartBtn = e.target.closest('.add-to-cart-btn');
                 if (cartBtn) {
-                    e.stopPropagation();
-                    const id = cartBtn.dataset.id;
-                    if(!cart.find(c=>String(c.productId)===String(id))){
-                        addToCart(id);
-                        renderCatalog();
-                        if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
-                        showToast('🛒 Добавлено в корзину!');
-                    }
+                    e.stopPropagation(); const id = cartBtn.dataset.id;
+                    if(!cart.find(c=>String(c.productId)===String(id))) { addToCart(id); showToast('🛒 Добавлено в корзину!'); }
                     return;
                 }
-                
                 const card = e.target.closest('.product-card');
-                if (card) {
-                    renderProductDetail(card.dataset.id);
-                    switchPage('productDetail');
-                }
+                if (card) { renderProductDetail(card.dataset.id); switchPage('productDetail'); }
             };
 
             document.getElementById('productsGrid').addEventListener('click', handleGridClick);
-            document.getElementById('favoritesPage').addEventListener('click', handleGridClick);
+            if(document.getElementById('favoritesPage')) document.getElementById('favoritesPage').addEventListener('click', handleGridClick);
             
-            document.querySelectorAll('.nav-links a[data-nav]').forEach(link=>{ 
-                link.addEventListener('click',(e)=>{ e.preventDefault(); switchPage(link.dataset.nav); }); 
-            }); 
-            
-            document.querySelectorAll('.menu-item[data-category]').forEach(item=>{ 
-                item.addEventListener('click',()=>{ 
-                    document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); 
-                    item.classList.add('active'); 
-                    currentCategory=item.dataset.category; 
-                    renderCatalog(); 
-                    if(document.getElementById('catalogPage').classList.contains('active-page')) switchPage('catalog'); 
-                }); 
-            }); 
-            
-            document.getElementById('priceRange').addEventListener('input',(e)=>{ 
-                maxPrice=parseInt(e.target.value); 
-                document.getElementById('priceMaxLabel').innerText=maxPrice.toLocaleString()+' ₽'; 
-                renderCatalog(); 
-            }); 
-            
-            document.getElementById('searchInput').addEventListener('input',(e)=>{ 
-                currentSearch=e.target.value; 
-                renderCatalog(); 
-            }); 
-            
-            document.getElementById('sortSelect').addEventListener('change',(e)=>{ 
-                currentSort=e.target.value; 
-                renderCatalog(); 
-            }); 
-            
+            document.querySelectorAll('.nav-links a[data-nav]').forEach(link=>{ link.addEventListener('click',(e)=>{ e.preventDefault(); switchPage(link.dataset.nav); }); }); 
+            document.querySelectorAll('.menu-item[data-category]').forEach(item=>{ item.addEventListener('click',()=>{ document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); item.classList.add('active'); currentCategory=item.dataset.category; renderCatalog(); if(document.getElementById('catalogPage').classList.contains('active-page')) switchPage('catalog'); }); }); 
+            document.getElementById('priceRange').addEventListener('input',(e)=>{ maxPrice=parseInt(e.target.value); document.getElementById('priceMaxLabel').innerText=maxPrice.toLocaleString()+' ₽'; renderCatalog(); }); 
+            document.getElementById('searchInput').addEventListener('input',(e)=>{ currentSearch=e.target.value; renderCatalog(); }); 
+            document.getElementById('sortSelect').addEventListener('change',(e)=>{ currentSort=e.target.value; renderCatalog(); }); 
             document.getElementById('miniCheckoutBtn').addEventListener('click',()=>switchPage('cart')); 
-            
-            document.querySelectorAll('.trending-tag').forEach(tag=>{ 
-                tag.addEventListener('click',()=>{ 
-                    currentSearch=tag.innerText; 
-                    document.getElementById('searchInput').value=currentSearch; 
-                    switchPage('catalog'); 
-                    renderCatalog(); 
-                    document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); 
-                    document.querySelector('.menu-item[data-category="all"]').classList.add('active'); 
-                    currentCategory='all'; 
-                }); 
-            }); 
         }
         document.addEventListener('DOMContentLoaded', init); window.switchPage = switchPage; window.updateCartQty = updateCartQty;
     </script>
 </body>
+</html>
