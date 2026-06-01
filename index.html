@@ -118,9 +118,159 @@
         .back-to-catalog { display: inline-block; margin-bottom: 24px; color: var(--primary); cursor: pointer; font-weight: 500; }
         .back-to-catalog i { margin-right: 6px; }
         @media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; gap: 24px; } .detail-image { min-height: 260px; font-size: 5rem; } }
+
+        /* ===== AUTH OVERLAY & MODAL ===== */
+        #authOverlay {
+            position: fixed; inset: 0; z-index: 9000;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 1; transition: opacity 0.5s ease;
+        }
+        #authOverlay.hidden { opacity: 0; pointer-events: none; }
+        .auth-bg-pattern {
+            position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+        }
+        .auth-bg-pattern::before {
+            content: '🎸🎵🎶🎸🎵🎶🎸🎵🎶🎸🎵🎶🎸🎵🎶🎸🎵🎶🎸🎵🎶🎸🎵🎶';
+            position: absolute; font-size: 3.5rem; line-height: 1.2;
+            opacity: 0.04; top: -20px; left: -20px; right: -20px;
+            word-break: break-all; letter-spacing: 0.8rem; color: white;
+        }
+        .auth-card {
+            position: relative; z-index: 1;
+            background: white; border-radius: 32px; padding: 40px;
+            width: 100%; max-width: 420px; margin: 20px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+            animation: authSlideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes authSlideUp { from { opacity: 0; transform: translateY(40px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .auth-logo { text-align: center; margin-bottom: 28px; }
+        .auth-logo h2 { font-size: 2rem; font-weight: 700; color: var(--primary); }
+        .auth-logo p { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
+        .auth-tabs { display: flex; background: var(--gray-light); border-radius: 16px; padding: 4px; margin-bottom: 28px; gap: 4px; }
+        .auth-tab {
+            flex: 1; padding: 10px; border: none; background: transparent;
+            border-radius: 12px; font-weight: 600; font-size: 0.9rem;
+            cursor: pointer; transition: all 0.25s; color: var(--text-muted);
+        }
+        .auth-tab.active { background: white; color: var(--primary); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .auth-form { display: none; }
+        .auth-form.active { display: block; animation: fade 0.2s ease; }
+        .auth-field { margin-bottom: 16px; }
+        .auth-field label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: #1e1e2a; }
+        .auth-field input {
+            width: 100%; padding: 12px 16px; border: 1.5px solid var(--gray-border);
+            border-radius: 14px; font-size: 0.95rem; font-family: inherit;
+            transition: border-color 0.2s; outline: none; background: #fafafa;
+        }
+        .auth-field input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(213,80,82,0.1); }
+        .auth-submit {
+            width: 100%; padding: 14px; background: var(--primary); color: white;
+            border: none; border-radius: 16px; font-size: 1rem; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; margin-top: 8px; letter-spacing: 0.3px;
+        }
+        .auth-submit:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(213,80,82,0.35); }
+        .auth-submit:active { transform: translateY(0); }
+        .auth-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+        .auth-error {
+            background: #fff0f0; border: 1px solid #ffcccc; color: #c0392b;
+            border-radius: 12px; padding: 10px 14px; font-size: 0.85rem;
+            margin-bottom: 14px; display: none;
+        }
+        .auth-error.visible { display: block; animation: fade 0.2s ease; }
+        .auth-success {
+            background: #f0fff4; border: 1px solid #b2dfdb; color: #2e7d32;
+            border-radius: 12px; padding: 10px 14px; font-size: 0.85rem;
+            margin-bottom: 14px; display: none;
+        }
+        .auth-success.visible { display: block; animation: fade 0.2s ease; }
+        .auth-divider { text-align: center; color: var(--text-muted); font-size: 0.8rem; margin: 16px 0; position: relative; }
+        .auth-divider::before, .auth-divider::after { content: ''; position: absolute; top: 50%; width: 42%; height: 1px; background: var(--gray-border); }
+        .auth-divider::before { left: 0; } .auth-divider::after { right: 0; }
+        .password-toggle { position: relative; }
+        .password-toggle input { padding-right: 44px; }
+        .toggle-pw {
+            position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; color: var(--text-muted);
+            font-size: 1rem; transition: color 0.2s;
+        }
+        .toggle-pw:hover { color: var(--primary); }
+        .auth-hint { text-align: center; margin-top: 16px; font-size: 0.8rem; color: var(--text-muted); }
+        .auth-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* Navbar auth state */
+        #authNavBtn {
+            background: var(--primary); color: white; border: none;
+            padding: 8px 18px; border-radius: 40px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; gap: 8px;
+            transition: 0.2s; font-size: 0.9rem;
+        }
+        #authNavBtn:hover { background: var(--primary-dark); }
     </style>
 </head>
 <body>
+
+    <!-- ===== AUTH OVERLAY ===== -->
+    <div id="authOverlay">
+        <div class="auth-bg-pattern"></div>
+        <div class="auth-card">
+            <div class="auth-logo">
+                <h2>🎸 GuitarShop</h2>
+                <p>Войдите или создайте аккаунт</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tabLogin" onclick="showAuthTab('login')">Вход</button>
+                <button class="auth-tab" id="tabRegister" onclick="showAuthTab('register')">Регистрация</button>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <div class="auth-form active" id="loginForm">
+                <div class="auth-error" id="loginError"></div>
+                <div class="auth-field">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="your@email.com" autocomplete="email">
+                </div>
+                <div class="auth-field">
+                    <label>Пароль</label>
+                    <div class="password-toggle">
+                        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+                        <button class="toggle-pw" type="button" onclick="togglePw('loginPassword', this)"><i class="far fa-eye"></i></button>
+                    </div>
+                </div>
+                <button class="auth-submit" id="loginBtn" onclick="handleLogin()">
+                    <i class="fas fa-sign-in-alt"></i> Войти
+                </button>
+                <div class="auth-hint">Нет аккаунта? <a href="#" style="color:var(--primary); font-weight:600;" onclick="showAuthTab('register'); return false;">Зарегистрироваться</a></div>
+            </div>
+
+            <!-- REGISTER FORM -->
+            <div class="auth-form" id="registerForm">
+                <div class="auth-error" id="registerError"></div>
+                <div class="auth-success" id="registerSuccess"></div>
+                <div class="auth-field">
+                    <label>Имя</label>
+                    <input type="text" id="regName" placeholder="Ваше имя" autocomplete="name">
+                </div>
+                <div class="auth-field">
+                    <label>Email</label>
+                    <input type="email" id="regEmail" placeholder="your@email.com" autocomplete="email">
+                </div>
+                <div class="auth-field">
+                    <label>Пароль <span style="color:var(--text-muted); font-weight:400;">(мин. 6 символов)</span></label>
+                    <div class="password-toggle">
+                        <input type="password" id="regPassword" placeholder="••••••••" autocomplete="new-password">
+                        <button class="toggle-pw" type="button" onclick="togglePw('regPassword', this)"><i class="far fa-eye"></i></button>
+                    </div>
+                </div>
+                <button class="auth-submit" id="registerBtn" onclick="handleRegister()">
+                    <i class="fas fa-user-plus"></i> Создать аккаунт
+                </button>
+                <div class="auth-hint">Уже есть аккаунт? <a href="#" style="color:var(--primary); font-weight:600;" onclick="showAuthTab('login'); return false;">Войти</a></div>
+            </div>
+        </div>
+    </div>
+
     <div class="navbar">
         <div class="container nav-inner">
             <div class="logo"><h1>🎸 GuitarShop <span>| магазин гитар</span></h1></div>
@@ -131,7 +281,13 @@
                 <a data-nav="profile"><i class="fas fa-user"></i> Профиль</a>
                 <a data-nav="cart" class="cart-nav-btn"><i class="fas fa-shopping-cart"></i> Корзина<span class="cart-badge" id="cartBadge">0</span></a>
             </div>
-            <div class="profile-mini" id="logoutBtn"><div class="avatar-sm" id="headerAvatar">А</div><span id="headerUserName">Илья</span><i class="fas fa-chevron-down"></i></div>
+            <div id="navUserBlock" style="display:none;">
+                <div class="profile-mini" id="logoutBtn">
+                    <div class="avatar-sm" id="headerAvatar">А</div>
+                    <span id="headerUserName">Пользователь</span>
+                    <i class="fas fa-sign-out-alt" style="margin-left:4px; font-size:0.85rem; color:var(--text-muted);"></i>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -172,10 +328,144 @@
     <footer><div class="container"><p>🎸 GuitarShop — магазин гитар и музыкальных инструментов • Доставка по всей России</p><p>© 2026, GuitarShop | Все права защищены</p></div></footer>
 
     <script>
-        // Инициализация Supabase клиента (замените на ваши настоящие доступы)
+        // ===== SUPABASE INIT =====
         const SUPABASE_URL = 'https://qabxmbovewujnxrydnjf.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhYnhtYm92ZXd1am54cnlkbmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODYzNTYsImV4cCI6MjA5NTU2MjM1Nn0.3XjKvkjHq7z9hiqaiTs8hHw0caQSdRjMG6UoE251jgU';
         const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+        // ===== AUTH UI HELPERS =====
+        function showAuthTab(tab) {
+            document.getElementById('loginForm').classList.toggle('active', tab === 'login');
+            document.getElementById('registerForm').classList.toggle('active', tab === 'register');
+            document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+            document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+            clearAuthErrors();
+        }
+
+        function clearAuthErrors() {
+            ['loginError','registerError','registerSuccess'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) { el.classList.remove('visible'); el.textContent = ''; }
+            });
+        }
+
+        function showAuthError(id, msg) {
+            const el = document.getElementById(id);
+            if(el) { el.textContent = msg; el.classList.add('visible'); }
+        }
+
+        function showAuthSuccess(id, msg) {
+            const el = document.getElementById(id);
+            if(el) { el.textContent = msg; el.classList.add('visible'); }
+        }
+
+        function togglePw(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const isText = input.type === 'text';
+            input.type = isText ? 'password' : 'text';
+            btn.innerHTML = `<i class="far fa-eye${isText ? '' : '-slash'}"></i>`;
+        }
+
+        function setAuthLoading(btnId, loading, defaultHTML) {
+            const btn = document.getElementById(btnId);
+            if(!btn) return;
+            btn.disabled = loading;
+            btn.innerHTML = loading
+                ? `<span class="auth-spinner"></span> Загрузка...`
+                : defaultHTML;
+        }
+
+        // ===== AUTH ACTIONS =====
+        async function handleLogin() {
+            clearAuthErrors();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            if(!email || !password) { showAuthError('loginError', 'Пожалуйста, заполните все поля.'); return; }
+            setAuthLoading('loginBtn', true, '<i class="fas fa-sign-in-alt"></i> Войти');
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if(error) throw error;
+                // onAuthStateChange handle the rest
+            } catch(err) {
+                const map = {
+                    'Invalid login credentials': 'Неверный email или пароль.',
+                    'Email not confirmed': 'Подтвердите email перед входом.',
+                    'Too many requests': 'Слишком много попыток. Попробуйте позже.'
+                };
+                showAuthError('loginError', map[err.message] || err.message);
+                setAuthLoading('loginBtn', false, '<i class="fas fa-sign-in-alt"></i> Войти');
+            }
+        }
+
+        async function handleRegister() {
+            clearAuthErrors();
+            const name = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            if(!name || !email || !password) { showAuthError('registerError', 'Пожалуйста, заполните все поля.'); return; }
+            if(password.length < 6) { showAuthError('registerError', 'Пароль должен быть не менее 6 символов.'); return; }
+            setAuthLoading('registerBtn', true, '<i class="fas fa-user-plus"></i> Создать аккаунт');
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email, password,
+                    options: { data: { full_name: name } }
+                });
+                if(error) throw error;
+                // If email confirmation is disabled in Supabase → user logged in immediately
+                if(data.session) {
+                    // onAuthStateChange will fire → handled below
+                } else {
+                    // Email confirmation required
+                    showAuthSuccess('registerSuccess', '✅ Аккаунт создан! Проверьте почту для подтверждения, затем войдите.');
+                    setAuthLoading('registerBtn', false, '<i class="fas fa-user-plus"></i> Создать аккаунт');
+                }
+            } catch(err) {
+                const map = {
+                    'User already registered': 'Пользователь с таким email уже зарегистрирован.',
+                    'Password should be at least 6 characters': 'Пароль должен быть не менее 6 символов.'
+                };
+                showAuthError('registerError', map[err.message] || err.message);
+                setAuthLoading('registerBtn', false, '<i class="fas fa-user-plus"></i> Создать аккаунт');
+            }
+        }
+
+        // Enter key support for login/register
+        document.addEventListener('keydown', function(e) {
+            if(e.key !== 'Enter') return;
+            if(document.getElementById('loginForm').classList.contains('active')) handleLogin();
+            else if(document.getElementById('registerForm').classList.contains('active')) handleRegister();
+        });
+
+        // ===== AUTH STATE HANDLER =====
+        function onUserLoggedIn(user) {
+            const name = user.user_metadata?.full_name || user.email.split('@')[0];
+            const avatar = name.charAt(0).toUpperCase();
+            currentUser.name = name;
+            currentUser.avatar = avatar;
+            currentUser.email = user.email;
+            document.getElementById('headerAvatar').innerText = avatar;
+            document.getElementById('headerUserName').innerText = name;
+            document.getElementById('navUserBlock').style.display = 'flex';
+            // Hide overlay with fade
+            const overlay = document.getElementById('authOverlay');
+            overlay.classList.add('hidden');
+            setTimeout(() => overlay.style.display = 'none', 500);
+        }
+
+        function onUserLoggedOut() {
+            currentUser = { name: '', avatar: '', email: '', orders: [] };
+            cart = []; favorites = [];
+            document.getElementById('navUserBlock').style.display = 'none';
+            const overlay = document.getElementById('authOverlay');
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.classList.remove('hidden'), 10);
+            // Reset forms
+            ['loginEmail','loginPassword','regName','regEmail','regPassword'].forEach(id => {
+                const el = document.getElementById(id); if(el) el.value = '';
+            });
+            clearAuthErrors();
+            showAuthTab('login');
+        }
 
         let products = [];
         let cart = []; 
@@ -464,9 +754,11 @@
             
             document.getElementById('miniCheckoutBtn').addEventListener('click',()=>switchPage('cart')); 
             
-            document.getElementById('logoutBtn').addEventListener('click',()=>{ 
-                if(confirm('Сбросить текущую сессию и очистить данные приложения?')){ 
-                    cart = []; favorites = []; currentUser.orders = []; location.reload(); 
+            document.getElementById('logoutBtn').addEventListener('click', async () => { 
+                if(confirm('Выйти из аккаунта?')){ 
+                    cart = []; favorites = []; currentUser.orders = [];
+                    await supabaseClient.auth.signOut();
+                    // onAuthStateChange will call onUserLoggedOut()
                 } 
             }); 
             
@@ -482,7 +774,35 @@
                 }); 
             }); 
         }
-        document.addEventListener('DOMContentLoaded', init); window.switchPage = switchPage; window.updateCartQty = updateCartQty;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init();
+
+            // ===== SUPABASE AUTH STATE LISTENER =====
+            if(supabaseClient) {
+                supabaseClient.auth.onAuthStateChange((event, session) => {
+                    if(session && session.user) {
+                        onUserLoggedIn(session.user);
+                    } else {
+                        onUserLoggedOut();
+                    }
+                });
+                // Check current session on load
+                supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                    if(session && session.user) {
+                        onUserLoggedIn(session.user);
+                    }
+                    // If no session, overlay stays visible (default)
+                });
+            }
+        });
+
+        window.switchPage = switchPage; 
+        window.updateCartQty = updateCartQty;
+        window.showAuthTab = showAuthTab;
+        window.togglePw = togglePw;
+        window.handleLogin = handleLogin;
+        window.handleRegister = handleRegister;
     </script>
 </body>
 </html>
