@@ -810,10 +810,21 @@
             const html = `<div class="product-detail-page"><div class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Вернуться к каталогу</div><div class="detail-grid"><div class="detail-image ${product.imageClass || ''}"><span style="font-size:6rem;">${product.emoji || '🎸'}</span>${product.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':product.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':''}</div><div class="detail-info"><h2>${product.title}</h2><div class="product-rating">${'★'.repeat(Math.floor(product.rating || 5))}${(product.rating || 5)%1>=0.5?'★':'☆'} ${product.rating || 5} <span>(${product.reviews || 0} отзывов)</span></div><div class="detail-price">${displayPrice.toLocaleString()} ₽${product.oldPrice?`<span class="detail-old-price">${product.oldPrice.toLocaleString()} ₽</span>`:''}</div><div class="detail-description"><strong>Описание:</strong> ${product.description || ''}</div>${specsHtml}<div class="detail-actions"><button class="add-to-cart-btn ${inCart?'in-cart':''}" data-id="${product.id}"><i class="fas ${inCart?'fa-check':'fa-cart-plus'}"></i> ${inCart?'В корзине':'В корзину'}</button><button class="favorite-btn ${inFav?'liked':''}" data-id="${product.id}"><i class="${inFav?'fas':'far'} fa-heart"></i> ${inFav?'В избранном':'В избранное'}</button></div></div></div></div>`;
             document.getElementById('productDetailPage').innerHTML = html;
             
-            document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', (e) => { 
-                if (!currentUser.email) { openAuthOverlay('Войдите, чтобы добавить товар в корзину'); return; }
-                const id = e.currentTarget.dataset.id; if(!cart.find(c=>String(c.productId)===String(id))) { addToCart(id); renderProductDetail(id); renderCatalog(); showToast('🛒 Добавлено в корзину!'); } });
-            document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; toggleFavorite(id); renderProductDetail(id); });
+            document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', async (e) => { 
+                if (!currentUser.id) { openAuthOverlay('Войдите, чтобы добавить товар в корзину'); return; }
+                const id = e.currentTarget.dataset.id;
+                if (!cart.find(c => String(c.productId) === String(id))) {
+                    await addToCart(id);
+                    renderProductDetail(id);
+                    renderCatalog();
+                    showToast('🛒 Добавлено в корзину!');
+                }
+            });
+            document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', async (e) => {
+                const id = e.currentTarget.dataset.id;
+                await toggleFavorite(id);
+                renderProductDetail(id);
+            });
         }
         
         function getFilteredProducts() { 
@@ -889,26 +900,26 @@
             fetchProductsFromDB();
             
             // ВАЖНО: Делегирование кликов для сеток товаров (для Каталога и Избранного)
-            const handleGridClick = (e) => {
+            const handleGridClick = async (e) => {
                 const favBtn = e.target.closest('.favorite-btn');
                 if (favBtn) {
                     e.stopPropagation();
-                    toggleFavorite(favBtn.dataset.id);
+                    await toggleFavorite(favBtn.dataset.id);
                     return;
                 }
                 
                 const cartBtn = e.target.closest('.add-to-cart-btn');
                 if (cartBtn) {
                     e.stopPropagation();
-                    if (!currentUser.email) {
+                    if (!currentUser.id) {
                         openAuthOverlay('Войдите, чтобы добавить товар в корзину');
                         return;
                     }
                     const id = cartBtn.dataset.id;
-                    if(!cart.find(c=>String(c.productId)===String(id))){
-                        addToCart(id);
+                    if (!cart.find(c => String(c.productId) === String(id))) {
+                        await addToCart(id);
                         renderCatalog();
-                        if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+                        if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
                         showToast('🛒 Добавлено в корзину!');
                     }
                     return;
