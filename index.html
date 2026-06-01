@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
@@ -210,7 +212,6 @@
 </head>
 <body>
 
-    <!-- ===== AUTH OVERLAY ===== -->
     <div id="authOverlay">
         <div class="auth-bg-pattern"></div>
         <div class="auth-card">
@@ -224,7 +225,6 @@
                 <button class="auth-tab" id="tabRegister" onclick="showAuthTab('register')">Регистрация</button>
             </div>
 
-            <!-- LOGIN FORM -->
             <div class="auth-form active" id="loginForm">
                 <div class="auth-error" id="loginError"></div>
                 <div class="auth-field">
@@ -244,7 +244,6 @@
                 <div class="auth-hint">Нет аккаунта? <a href="#" style="color:var(--primary); font-weight:600;" onclick="showAuthTab('register'); return false;">Зарегистрироваться</a></div>
             </div>
 
-            <!-- REGISTER FORM -->
             <div class="auth-form" id="registerForm">
                 <div class="auth-error" id="registerError"></div>
                 <div class="auth-success" id="registerSuccess"></div>
@@ -411,11 +410,9 @@
                     options: { data: { full_name: name } }
                 });
                 if(error) throw error;
-                // If email confirmation is disabled in Supabase → user logged in immediately
                 if(data.session) {
                     // onAuthStateChange will fire → handled below
                 } else {
-                    // Email confirmation required
                     showAuthSuccess('registerSuccess', '✅ Аккаунт создан! Проверьте почту для подтверждения, затем войдите.');
                     setAuthLoading('registerBtn', false, '<i class="fas fa-user-plus"></i> Создать аккаунт');
                 }
@@ -429,7 +426,6 @@
             }
         }
 
-        // Enter key support for login/register
         document.addEventListener('keydown', function(e) {
             if(e.key !== 'Enter') return;
             if(document.getElementById('loginForm').classList.contains('active')) handleLogin();
@@ -443,23 +439,37 @@
             currentUser.name = name;
             currentUser.avatar = avatar;
             currentUser.email = user.email;
+            
+            // Загружаем сохраненные данные вошедшего пользователя из localStorage
+            loadData();
+
             document.getElementById('headerAvatar').innerText = avatar;
             document.getElementById('headerUserName').innerText = name;
             document.getElementById('navUserBlock').style.display = 'flex';
-            // Hide overlay with fade
+            
+            // Закрытие оверлея авторизации
             const overlay = document.getElementById('authOverlay');
             overlay.classList.add('hidden');
             setTimeout(() => overlay.style.display = 'none', 500);
+
+            // Если открыта страница профиля или корзины, обновляем их отображение
+            if (document.getElementById('profilePage').classList.contains('active-page')) renderProfile();
+            if (document.getElementById('cartPage').classList.contains('active-page')) renderCart();
         }
 
         function onUserLoggedOut() {
             currentUser = { name: '', avatar: '', email: '', orders: [] };
-            cart = []; favorites = [];
+            cart = []; 
+            favorites = [];
+            
+            // Сбрасываем интерфейс на гостевые/пустые данные
+            loadData();
+            
             document.getElementById('navUserBlock').style.display = 'none';
             const overlay = document.getElementById('authOverlay');
             overlay.style.display = 'flex';
             setTimeout(() => overlay.classList.remove('hidden'), 10);
-            // Reset forms
+            
             ['loginEmail','loginPassword','regName','regEmail','regPassword'].forEach(id => {
                 const el = document.getElementById(id); if(el) el.value = '';
             });
@@ -476,112 +486,6 @@
         let currentSearch = ''; 
         let maxPrice = 300000;
 
-        // ===== СИНХРОНИЗАЦИЯ С БАЗОЙ ДАННЫХ SUPABASE =====
-
-        // Загрузка корзины и избранного из БД при авторизации
-        async function loadUserDataFromDB() {
-            if (!supabaseClient) return;
-            try {
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                if (!user) return;
-
-                // 1. Загружаем корзину
-                const { data: dbCart, error: cartErr } = await supabaseClient
-                    .from('cart')
-                    .select('product_id, qty');
-                if (cartErr) throw cartErr;
-                
-                cart = (dbCart || []).map(item => ({
-                    productId: String(item.product_id),
-                    qty: item.qty
-                }));
-
-                // 2. Загружаем избранное
-                const { data: dbFavs, error: favErr } = await supabaseClient
-                    .from('favorites')
-                    .select('product_id');
-                if (favErr) throw favErr;
-
-                favorites = (dbFavs || []).map(item => String(item.product_id));
-
-                // 3. Загружаем историю заказов (опционально, если таблица orders создана)
-                const { data: dbOrders, error: orderErr } = await supabaseClient
-                    .from('orders')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (!orderErr && dbOrders) {
-                    currentUser.orders = dbOrders.map(o => ({
-                        id: o.id,
-                        date: new Date(o.created_at).toLocaleDateString('ru-RU'),
-                        items: o.items, // Предполагается, что данные хранятся в jsonb
-                        total: o.total,
-                        status: o.status
-                    }));
-                }
-
-                // Обновляем интерфейс после загрузки данных
-                updateCartBadge(); 
-                updateMiniCart();
-                if(document.getElementById('cartPage').classList.contains('active-page')) renderCart();
-                if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
-                if(document.getElementById('profilePage').classList.contains('active-page')) renderProfile();
-                renderCatalog();
-
-            } catch (error) {
-                console.error("Ошибка загрузки пользовательских данных:", error.message);
-            }
-        }
-
-        // Синхронизация корзины (перезапись текущего состояния в БД)
-        async function saveCartToDB() {
-            if (!supabaseClient) return;
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) return;
-
-            try {
-                // Сначала удаляем старую корзину пользователя
-                await supabaseClient.from('cart').delete().eq('user_id', user.id);
-                
-                // Если в корзине что-то есть, записываем заново
-                if (cart.length > 0) {
-                    const insertRows = cart.map(item => ({
-                        user_id: user.id,
-                        product_id: item.productId,
-                        qty: item.qty
-                    }));
-                    const { error } = await supabaseClient.from('cart').insert(insertRows);
-                    if (error) throw error;
-                }
-            } catch (error) {
-                console.error("Ошибка сохранения корзины в БД:", error.message);
-            }
-        }
-
-        // Добавление / Удаление из избранного напрямую в БД
-        async function toggleFavoriteInDB(productId, isAdding) {
-            if (!supabaseClient) return;
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) return;
-
-            try {
-                if (isAdding) {
-                    await supabaseClient.from('favorites').insert({
-                        user_id: user.id,
-                        product_id: productId
-                    });
-                } else {
-                    await supabaseClient.from('favorites')
-                        .delete()
-                        .eq('user_id', user.id)
-                        .eq('product_id', productId);
-                }
-            } catch (error) {
-                console.error("Ошибка изменения избранного в БД:", error.message);
-            }
-        }
-
-        // Асинхронная загрузка каталога товаров
         async function fetchProductsFromDB() {
             if (!supabaseClient) {
                 console.error("Supabase не инициализирован. Проверьте ключи.");
@@ -596,22 +500,43 @@
                     oldPrice: p.old_price,
                     imageClass: p.image_class,
                 }));
-                renderCatalog();
+                renderCatalog(); 
+                updateMiniCart();
+                if(document.getElementById('cartPage').classList.contains('active-page')) renderCart();
+                if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
             } catch (error) {
                 console.error("Ошибка загрузки товаров из Supabase:", error.message);
                 showToast("❌ Ошибка загрузки каталога");
             }
         }
 
-        // Переписываем заглушку сохранения под вызов нашей корзины
-        function saveAll() {
-            saveCartToDB();
-        }
-
-        // Старый метод loadData больше не нужен, данные грузятся через loadUserDataFromDB при входе
+        // ===== ИСПРАВЛЕННЫЕ ФУНКЦИИ СОХРАНЕНИЯ И ЗАГРУЗКИ =====
         function loadData() {
+            // 1. Загружаем корзину и избранное
+            const savedCart = localStorage.getItem('gs_cart');
+            const savedFavorites = localStorage.getItem('gs_favorites');
+            
+            cart = savedCart ? JSON.parse(savedCart) : [];
+            favorites = savedFavorites ? JSON.parse(savedFavorites) : [];
+
+            // 2. Загружаем историю заказов, привязанную к email пользователя (или гостя)
+            const orderKey = currentUser.email ? 'gs_orders_' + currentUser.email : 'gs_orders_guest';
+            const savedOrders = localStorage.getItem(orderKey);
+            currentUser.orders = savedOrders ? JSON.parse(savedOrders) : [];
+
+            // 3. Обновляем элементы интерфейса
             updateCartBadge(); 
             updateMiniCart();
+        }
+
+        function saveAll() {
+            // 1. Сохраняем общие данные (корзину и избранное)
+            localStorage.setItem('gs_cart', JSON.stringify(cart));
+            localStorage.setItem('gs_favorites', JSON.stringify(favorites));
+
+            // 2. Сохраняем историю заказов текущего пользователя по уникальному ключу
+            const orderKey = currentUser.email ? 'gs_orders_' + currentUser.email : 'gs_orders_guest';
+            localStorage.setItem(orderKey, JSON.stringify(currentUser.orders || []));
         }
 
         function updateCartBadge() { document.getElementById('cartBadge').innerText = cart.reduce((s,i)=>s+i.qty,0); }
@@ -620,7 +545,7 @@
             const container = document.getElementById('miniCartItems'); 
             const totalEl = document.getElementById('miniCartTotal'); 
             if(!cart.length) { 
-                container.innerHTML='<p style="font-size:0.85rem;">Пока пусто</p>'; 
+                container.innerHTML='<p style="font-size:0.85rem; color:var(--text-muted);">Пока пусто</p>'; 
                 totalEl.innerText='Итого: 0 ₽'; 
                 return; 
             } 
@@ -671,22 +596,16 @@
             } 
         }
 
-        // Обновленная функция Избранного с поддержкой вызова операций с БД
-        async function toggleFavorite(productId) { 
+        function toggleFavorite(productId) { 
             productId = String(productId);
-            let isAdding = false;
             if(favorites.includes(productId)) { 
                 favorites = favorites.filter(id=>id!==productId); 
                 showToast('💔 Удалено из избранного'); 
             } else { 
                 favorites.push(productId); 
-                showToast('❤️ Добавлено в избранное');
-                isAdding = true;
+                showToast('❤️ Добавлено в избранное'); 
             } 
-            
-            // Отправляем изменения в Supabase
-            await toggleFavoriteInDB(productId, isAdding);
-            
+            saveAll(); 
             renderCatalog(); 
             if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites(); 
             if(document.getElementById('productDetailPage').classList.contains('active-page')) { 
@@ -751,22 +670,8 @@
             html+=`<div class="cart-summary"><p>Товаров: ${cart.reduce((s,i)=>s+i.qty,0)} шт.</p><p>Итого: <strong>${total.toLocaleString()} ₽</strong></p><button class="checkout-btn" id="orderBtn" style="width:auto;">Оформить заказ</button></div></div>`; 
             container.innerHTML=html; 
             
-            document.getElementById('orderBtn')?.addEventListener('click', async () => { 
+            document.getElementById('orderBtn')?.addEventListener('click',()=>{ 
                 if(!cart.length) return; 
-                
-                // Пример отправки заказа в БД (если таблица orders существует)
-                try {
-                    const { data: { user } } = await supabaseClient.auth.getUser();
-                    if(user) {
-                        await supabaseClient.from('orders').insert({
-                            user_id: user.id,
-                            items: cart,
-                            total: total,
-                            status: 'processing'
-                        });
-                    }
-                } catch(e) { console.error("Не удалось сохранить заказ в БД", e); }
-
                 currentUser.orders.unshift({ id:Date.now(), date:new Date().toLocaleDateString('ru-RU'), items:[...cart], total, status:'processing' }); 
                 cart=[]; 
                 saveAll(); 
@@ -795,50 +700,16 @@
         }
         
         function renderContacts() { document.getElementById('contactsPage').innerHTML = `<div class="contacts-card"><h2>📞 Контакты</h2><p><i class="fas fa-map-marker-alt"></i> <strong>Адрес:</strong> г. Москва, ул. Музыкальная, д. 7, ТЦ «Аккорд», 2 этаж</p><p><i class="fas fa-phone"></i> <strong>Телефон:</strong> +7 (495) 123-45-67</p><p><i class="fas fa-envelope"></i> <strong>Email:</strong> info@guitarshop.ru</p><p><i class="fas fa-clock"></i> <strong>Часы работы:</strong> Пн-Сб 10:00–21:00, Вс 11:00–19:00</p><div style="margin-top:20px; background:var(--gray-light); border-radius:18px; padding:16px;"><h4>🅿️ Парковка</h4><p>Бесплатная парковка для посетителей магазина на 30 мест.</p></div></div>`; }
-        function renderProfile() { const ordersHtml = currentUser.orders.length===0?'<p style="color:var(--text-muted);">У вас пока нет заказов.</p>':currentUser.orders.map(o=>`<div class="order-history-item"><div><strong>Заказ #${o.id.toString().slice(-6)}</strong><div style="font-size:0.8rem;">${o.date} • ${o.items.length} поз.</div></div><div>${o.total.toLocaleString()} ₽</div><div class="${o.status==='delivered'?'status-delivered':'status-processing'}">${o.status==='delivered'?'✅ Доставлен':'⏳ В обработке'}</div></div>`).join(''); document.getElementById('profilePage').innerHTML = `<div class="profile-card"><div class="avatar-sm" style="width:80px; height:80px; font-size:2rem; margin:0 auto; background:var(--primary);">${currentUser.avatar}</div><h2 style="margin-top:12px;">${currentUser.name}</h2><p style="color:var(--text-muted);">Постоянный покупатель</p><div style="display:flex; justify-content:center; gap:32px; margin:20px 0;"><div><strong>${currentUser.orders.length}</strong> заказов</div><div><strong>${favorites.length}</strong> в избранном</div></div></div><h3 style="margin:28px 0 16px;">📦 История заказов</h3><div style="background:white; border-radius:28px; border:1px solid var(--gray-border); padding:20px;">${ordersHtml}</div>`; }
+        function renderProfile() { const ordersHtml = (!currentUser.orders || currentUser.orders.length===0)?'<p style="color:var(--text-muted);">У вас пока нет заказов.</p>':currentUser.orders.map(o=>`<div class="order-history-item"><div><strong>Заказ #${o.id.toString().slice(-6)}</strong><div style="font-size:0.8rem;">${o.date} • ${o.items.length} поз.</div></div><div>${o.total.toLocaleString()} ₽</div><div class="${o.status==='delivered'?'status-delivered':'status-processing'}">${o.status==='delivered'?'✅ Доставлен':'⏳ В обработке'}</div></div>`).join(''); document.getElementById('profilePage').innerHTML = `<div class="profile-card"><div class="avatar-sm" style="width:80px; height:80px; font-size:2rem; margin:0 auto; background:var(--primary);">${currentUser.avatar || 'U'}</div><h2 style="margin-top:12px;">${currentUser.name || 'Пользователь'}</h2><p style="color:var(--text-muted);">Постоянный покупатель</p><div style="display:flex; justify-content:center; gap:32px; margin:20px 0;"><div><strong>${currentUser.orders ? currentUser.orders.length : 0}</strong> заказов</div><div><strong>${favorites.length}</strong> в избранном</div></div></div><h3 style="margin:28px 0 16px;">📦 История заказов</h3><div style="background:white; border-radius:28px; border:1px solid var(--gray-border); padding:20px;">${ordersHtml}</div>`; }
         
         function switchPage(pageId) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page')); document.getElementById(`${pageId}Page`).classList.add('active-page'); document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active')); document.querySelector(`.nav-links a[data-nav="${pageId}"]`)?.classList.add('active'); if(pageId==='catalog') renderCatalog(); else if(pageId==='cart') renderCart(); else if(pageId==='favorites') renderFavorites(); else if(pageId==='contacts') renderContacts(); else if(pageId==='profile') renderProfile(); window.scrollTo({top:0,behavior:'smooth'}); }
         
-        // ===== AUTH STATE HANDLER =====
-        function onUserLoggedIn(user) {
-            const name = user.user_metadata?.full_name || user.email.split('@')[0];
-            const avatar = name.charAt(0).toUpperCase();
-            currentUser.name = name;
-            currentUser.avatar = avatar;
-            currentUser.email = user.email;
-            document.getElementById('headerAvatar').innerText = avatar;
-            document.getElementById('headerUserName').innerText = name;
-            document.getElementById('navUserBlock').style.display = 'flex';
-            
-            // Загружаем данные пользователя из БД, как только сессия подтверждена
-            loadUserDataFromDB();
-
-            const overlay = document.getElementById('authOverlay');
-            overlay.classList.add('hidden');
-            setTimeout(() => overlay.style.display = 'none', 500);
-        }
-
-        function onUserLoggedOut() {
-            currentUser = { name: '', avatar: '', email: '', orders: [] };
-            cart = []; favorites = [];
-            updateCartBadge();
-            updateMiniCart();
-            document.getElementById('navUserBlock').style.display = 'none';
-            const overlay = document.getElementById('authOverlay');
-            overlay.style.display = 'flex';
-            setTimeout(() => overlay.classList.remove('hidden'), 10);
-            ['loginEmail','loginPassword','regName','regEmail','regPassword'].forEach(id => {
-                const el = document.getElementById(id); if(el) el.value = '';
-            });
-            clearAuthErrors();
-            showAuthTab('login');
-        }
-
         function init() { 
-            // Инициализация каталога
+            loadData(); 
+            
             fetchProductsFromDB();
             
-            // Делегирование кликов для сеток товаров
+            // ВАЖНО: Делегирование кликов для сеток товаров (для Каталога и Избранного)
             const handleGridClick = (e) => {
                 const favBtn = e.target.closest('.favorite-btn');
                 if (favBtn) {
@@ -935,7 +806,7 @@
                         onUserLoggedOut();
                     }
                 });
-                
+                // Проверка сессии при первичной загрузке
                 supabaseClient.auth.getSession().then(({ data: { session } }) => {
                     if(session && session.user) {
                         onUserLoggedIn(session.user);
@@ -949,7 +820,7 @@
         window.showAuthTab = showAuthTab;
         window.togglePw = togglePw;
         window.handleLogin = handleLogin;
-        window.handleRegister = handleRegister;;
+        window.handleRegister = handleRegister;
     </script>
 </body>
 </html>
