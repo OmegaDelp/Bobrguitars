@@ -340,49 +340,6 @@
     <footer><div class="container"><p>🎸 GuitarShop — магазин гитар и музыкальных инструментов • Доставка по всей России</p><p>© 2026, GuitarShop | Все права защищены</p></div></footer>
 
     <script>
-        /*
-         * ===== НЕОБХОДИМЫЕ ТАБЛИЦЫ SUPABASE =====
-         * Выполните эти SQL-запросы в Supabase Dashboard → SQL Editor:
-         *
-         * -- Корзина
-         * CREATE TABLE IF NOT EXISTS cart_items (
-         *   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-         *   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-         *   product_id text NOT NULL,
-         *   qty integer NOT NULL DEFAULT 1,
-         *   created_at timestamptz DEFAULT now(),
-         *   UNIQUE(user_id, product_id)
-         * );
-         * ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
-         * CREATE POLICY "Users manage own cart" ON cart_items
-         *   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-         *
-         * -- Избранное
-         * CREATE TABLE IF NOT EXISTS favorites (
-         *   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-         *   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-         *   product_id text NOT NULL,
-         *   created_at timestamptz DEFAULT now(),
-         *   UNIQUE(user_id, product_id)
-         * );
-         * ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
-         * CREATE POLICY "Users manage own favorites" ON favorites
-         *   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-         *
-         * -- Заказы
-         * CREATE TABLE IF NOT EXISTS orders (
-         *   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-         *   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-         *   items jsonb NOT NULL DEFAULT '[]',
-         *   total numeric NOT NULL DEFAULT 0,
-         *   status text NOT NULL DEFAULT 'processing',
-         *   created_at timestamptz DEFAULT now()
-         * );
-         * ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
-         * CREATE POLICY "Users manage own orders" ON orders
-         *   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-         */
-
         // ===== SUPABASE INIT =====
         const SUPABASE_URL = 'https://qabxmbovewujnxrydnjf.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhYnhtYm92ZXd1am54cnlkbmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODYzNTYsImV4cCI6MjA5NTU2MjM1Nn0.3XjKvkjHq7z9hiqaiTs8hHw0caQSdRjMG6UoE251jgU';
@@ -510,16 +467,15 @@
         });
 
         // ===== AUTH STATE HANDLER =====
-        async function onUserLoggedIn(user) {
+        function onUserLoggedIn(user) {
             const name = user.user_metadata?.full_name || user.email.split('@')[0];
             const avatar = name.charAt(0).toUpperCase();
-            currentUser.id = user.id;
             currentUser.name = name;
             currentUser.avatar = avatar;
             currentUser.email = user.email;
             
-            // Загружаем данные пользователя из Supabase
-            await loadData();
+            // Загружаем сохраненные данные вошедшего пользователя из localStorage
+            loadData();
 
             document.getElementById('headerAvatar').innerText = avatar;
             document.getElementById('headerUserName').innerText = name;
@@ -535,13 +491,12 @@
         }
 
         function onUserLoggedOut() {
-            currentUser = { id: null, name: '', avatar: '', email: '', orders: [] };
+            currentUser = { name: '', avatar: '', email: '', orders: [] };
             cart = []; 
             favorites = [];
             
-            // Сбрасываем интерфейс
-            updateCartBadge();
-            updateMiniCart();
+            // Сбрасываем интерфейс на гостевые/пустые данные
+            loadData();
             
             document.getElementById('navUserBlock').style.display = 'none';
             document.getElementById('navGuestBlock').style.display = 'flex';
@@ -556,7 +511,7 @@
         let products = [];
         let cart = []; 
         let favorites = []; 
-        let currentUser = { id: null, name: '', avatar: '', email: '', orders: [] }; 
+        let currentUser = { name: '', avatar: '', email: '', orders: [] }; 
         let currentCategory = 'all'; 
         let currentSort = 'default'; 
         let currentSearch = ''; 
@@ -586,188 +541,33 @@
             }
         }
 
-        // ===== SUPABASE: ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ =====
-        async function loadData() {
-            if (!currentUser.id) {
-                // Гость — чистим данные
-                cart = [];
-                favorites = [];
-                currentUser.orders = [];
-                updateCartBadge();
-                updateMiniCart();
-                return;
-            }
+        // ===== ИСПРАВЛЕННЫЕ ФУНКЦИИ СОХРАНЕНИЯ И ЗАГРУЗКИ =====
+        function loadData() {
+            // 1. Загружаем корзину и избранное
+            const savedCart = localStorage.getItem('gs_cart');
+            const savedFavorites = localStorage.getItem('gs_favorites');
+            
+            cart = savedCart ? JSON.parse(savedCart) : [];
+            favorites = savedFavorites ? JSON.parse(savedFavorites) : [];
 
-            try {
-                // Загружаем корзину, избранное и заказы параллельно
-                const [cartRes, favRes, ordersRes] = await Promise.all([
-                    supabaseClient.from('cart_items').select('*').eq('user_id', currentUser.id),
-                    supabaseClient.from('favorites').select('product_id').eq('user_id', currentUser.id),
-                    supabaseClient.from('orders').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })
-                ]);
+            // 2. Загружаем историю заказов, привязанную к email пользователя (или гостя)
+            const orderKey = currentUser.email ? 'gs_orders_' + currentUser.email : 'gs_orders_guest';
+            const savedOrders = localStorage.getItem(orderKey);
+            currentUser.orders = savedOrders ? JSON.parse(savedOrders) : [];
 
-                if (cartRes.error) console.error('Ошибка загрузки корзины:', cartRes.error.message);
-                if (favRes.error) console.error('Ошибка загрузки избранного:', favRes.error.message);
-                if (ordersRes.error) console.error('Ошибка загрузки заказов:', ordersRes.error.message);
-
-                cart = (cartRes.data || []).map(r => ({ productId: String(r.product_id), qty: r.qty, dbId: r.id }));
-                favorites = (favRes.data || []).map(r => String(r.product_id));
-                currentUser.orders = (ordersRes.data || []).map(o => ({
-                    id: o.id,
-                    date: new Date(o.created_at).toLocaleDateString('ru-RU'),
-                    items: o.items || [],
-                    total: o.total,
-                    status: o.status || 'processing'
-                }));
-            } catch(e) {
-                console.error('loadData error:', e);
-            }
-
-            updateCartBadge();
+            // 3. Обновляем элементы интерфейса
+            updateCartBadge(); 
             updateMiniCart();
         }
 
-        // ===== SUPABASE: КОРЗИНА =====
-        async function addToCart(productId, qty = 1) {
-            if (!currentUser.id) { openAuthOverlay('Войдите, чтобы добавить в корзину'); return; }
-            productId = String(productId);
-            const ex = cart.find(c => c.productId === productId);
-            if (ex) {
-                ex.qty += qty;
-                const { error } = await supabaseClient
-                    .from('cart_items')
-                    .update({ qty: ex.qty })
-                    .eq('user_id', currentUser.id)
-                    .eq('product_id', productId);
-                if (error) console.error('Ошибка обновления корзины:', error.message);
-            } else {
-                const { data, error } = await supabaseClient
-                    .from('cart_items')
-                    .insert({ user_id: currentUser.id, product_id: productId, qty })
-                    .select()
-                    .single();
-                if (error) { console.error('Ошибка добавления в корзину:', error.message); return; }
-                cart.push({ productId, qty, dbId: data.id });
-            }
-            updateCartBadge();
-            updateMiniCart();
-            if (document.getElementById('cartPage').classList.contains('active-page')) renderCart();
-        }
+        function saveAll() {
+            // 1. Сохраняем общие данные (корзину и избранное)
+            localStorage.setItem('gs_cart', JSON.stringify(cart));
+            localStorage.setItem('gs_favorites', JSON.stringify(favorites));
 
-        async function removeFromCart(productId) {
-            productId = String(productId);
-            cart = cart.filter(c => c.productId !== productId);
-            const { error } = await supabaseClient
-                .from('cart_items')
-                .delete()
-                .eq('user_id', currentUser.id)
-                .eq('product_id', productId);
-            if (error) console.error('Ошибка удаления из корзины:', error.message);
-        }
-
-        async function updateCartQty(productId, delta) {
-            productId = String(productId);
-            const item = cart.find(c => c.productId === productId);
-            if (!item) return;
-            item.qty += delta;
-            if (item.qty <= 0) {
-                await removeFromCart(productId);
-            } else {
-                const { error } = await supabaseClient
-                    .from('cart_items')
-                    .update({ qty: item.qty })
-                    .eq('user_id', currentUser.id)
-                    .eq('product_id', productId);
-                if (error) console.error('Ошибка обновления qty:', error.message);
-            }
-            updateCartBadge();
-            updateMiniCart();
-            renderCart();
-            renderCatalog();
-            if (document.getElementById('productDetailPage').classList.contains('active-page')) {
-                renderProductDetail(productId);
-            }
-        }
-
-        // ===== SUPABASE: ИЗБРАННОЕ =====
-        async function toggleFavorite(productId) {
-            if (!currentUser.id) { openAuthOverlay('Войдите, чтобы добавить в избранное'); return; }
-            productId = String(productId);
-            if (favorites.includes(productId)) {
-                favorites = favorites.filter(id => id !== productId);
-                const { error } = await supabaseClient
-                    .from('favorites')
-                    .delete()
-                    .eq('user_id', currentUser.id)
-                    .eq('product_id', productId);
-                if (error) console.error('Ошибка удаления из избранного:', error.message);
-                showToast('💔 Удалено из избранного');
-            } else {
-                favorites.push(productId);
-                const { error } = await supabaseClient
-                    .from('favorites')
-                    .insert({ user_id: currentUser.id, product_id: productId });
-                if (error) {
-                    // Ignore duplicate key error (upsert-like behavior)
-                    if (!error.message.includes('duplicate')) {
-                        console.error('Ошибка добавления в избранное:', error.message);
-                        favorites = favorites.filter(id => id !== productId);
-                    }
-                }
-                showToast('❤️ Добавлено в избранное');
-            }
-            renderCatalog();
-            if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
-            if (document.getElementById('productDetailPage').classList.contains('active-page')) {
-                renderProductDetail(productId);
-            }
-        }
-
-        // ===== SUPABASE: ОФОРМЛЕНИЕ ЗАКАЗА =====
-        async function placeOrder() {
-            if (!currentUser.id) { openAuthOverlay('Войдите, чтобы оформить заказ'); return; }
-            if (!cart.length) return;
-            let total = 0;
-            cart.forEach(i => {
-                const p = products.find(p => String(p.id) === i.productId);
-                if (p) total += (p.oldPrice || p.price) * i.qty;
-            });
-            const orderItems = cart.map(i => {
-                const p = products.find(p => String(p.id) === i.productId);
-                return { productId: i.productId, qty: i.qty, title: p?.title, price: p?.oldPrice || p?.price };
-            });
-            try {
-                const { data: order, error: orderErr } = await supabaseClient
-                    .from('orders')
-                    .insert({ user_id: currentUser.id, items: orderItems, total, status: 'processing' })
-                    .select()
-                    .single();
-                if (orderErr) throw orderErr;
-
-                // Очищаем корзину в Supabase
-                const { error: delErr } = await supabaseClient
-                    .from('cart_items')
-                    .delete()
-                    .eq('user_id', currentUser.id);
-                if (delErr) console.error('Ошибка очистки корзины:', delErr.message);
-
-                cart = [];
-                currentUser.orders.unshift({
-                    id: order.id,
-                    date: new Date(order.created_at).toLocaleDateString('ru-RU'),
-                    items: orderItems,
-                    total,
-                    status: 'processing'
-                });
-                updateCartBadge();
-                updateMiniCart();
-                renderCart();
-                renderCatalog();
-                showToast('🎉 Заказ оформлен!');
-            } catch(e) {
-                console.error('Ошибка оформления заказа:', e.message);
-                showToast('❌ Ошибка при оформлении заказа');
-            }
+            // 2. Сохраняем историю заказов текущего пользователя по уникальному ключу
+            const orderKey = currentUser.email ? 'gs_orders_' + currentUser.email : 'gs_orders_guest';
+            localStorage.setItem(orderKey, JSON.stringify(currentUser.orders || []));
         }
 
         function updateCartBadge() { document.getElementById('cartBadge').innerText = cart.reduce((s,i)=>s+i.qty,0); }
@@ -796,7 +596,53 @@
         function showToast(msg) { const t = document.createElement('div'); t.className='toast'; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
         function getCategoryName(cat) { return { acoustic:'Акустическая гитара', electric:'Электрогитара', bass:'Бас-гитара', ukulele:'Укулеле', accessory:'Аксессуар' }[cat]||cat; }
         
+        function addToCart(productId, qty=1) { 
+            const ex = cart.find(c=>String(c.productId)===String(productId)); 
+            if(ex) ex.qty+=qty; 
+            else cart.push({ productId, qty }); 
+            saveAll(); 
+            updateCartBadge(); 
+            updateMiniCart(); 
+            if(document.getElementById('cartPage').classList.contains('active-page')) renderCart(); 
+        }
 
+        function removeFromCart(productId) { 
+            cart = cart.filter(c=>String(c.productId)!==String(productId)); 
+            saveAll(); 
+        }
+
+        function updateCartQty(productId, delta) { 
+            const item = cart.find(c=>String(c.productId)===String(productId)); 
+            if(item) { 
+                item.qty+=delta; 
+                if(item.qty<=0) removeFromCart(productId); 
+                saveAll(); 
+                updateCartBadge(); 
+                updateMiniCart(); 
+                renderCart(); 
+                renderCatalog(); 
+                if(document.getElementById('productDetailPage').classList.contains('active-page')) { 
+                    renderProductDetail(productId); 
+                } 
+            } 
+        }
+
+        function toggleFavorite(productId) { 
+            productId = String(productId);
+            if(favorites.includes(productId)) { 
+                favorites = favorites.filter(id=>id!==productId); 
+                showToast('💔 Удалено из избранного'); 
+            } else { 
+                favorites.push(productId); 
+                showToast('❤️ Добавлено в избранное'); 
+            } 
+            saveAll(); 
+            renderCatalog(); 
+            if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites(); 
+            if(document.getElementById('productDetailPage').classList.contains('active-page')) { 
+                renderProductDetail(productId); 
+            } 
+        }
         
         function renderProductDetail(productId) {
             const product = products.find(p=>String(p.id)===String(productId));
@@ -810,21 +656,10 @@
             const html = `<div class="product-detail-page"><div class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Вернуться к каталогу</div><div class="detail-grid"><div class="detail-image ${product.imageClass || ''}"><span style="font-size:6rem;">${product.emoji || '🎸'}</span>${product.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':product.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':''}</div><div class="detail-info"><h2>${product.title}</h2><div class="product-rating">${'★'.repeat(Math.floor(product.rating || 5))}${(product.rating || 5)%1>=0.5?'★':'☆'} ${product.rating || 5} <span>(${product.reviews || 0} отзывов)</span></div><div class="detail-price">${displayPrice.toLocaleString()} ₽${product.oldPrice?`<span class="detail-old-price">${product.oldPrice.toLocaleString()} ₽</span>`:''}</div><div class="detail-description"><strong>Описание:</strong> ${product.description || ''}</div>${specsHtml}<div class="detail-actions"><button class="add-to-cart-btn ${inCart?'in-cart':''}" data-id="${product.id}"><i class="fas ${inCart?'fa-check':'fa-cart-plus'}"></i> ${inCart?'В корзине':'В корзину'}</button><button class="favorite-btn ${inFav?'liked':''}" data-id="${product.id}"><i class="${inFav?'fas':'far'} fa-heart"></i> ${inFav?'В избранном':'В избранное'}</button></div></div></div></div>`;
             document.getElementById('productDetailPage').innerHTML = html;
             
-            document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', async (e) => { 
-                if (!currentUser.id) { openAuthOverlay('Войдите, чтобы добавить товар в корзину'); return; }
-                const id = e.currentTarget.dataset.id;
-                if (!cart.find(c => String(c.productId) === String(id))) {
-                    await addToCart(id);
-                    renderProductDetail(id);
-                    renderCatalog();
-                    showToast('🛒 Добавлено в корзину!');
-                }
-            });
-            document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', async (e) => {
-                const id = e.currentTarget.dataset.id;
-                await toggleFavorite(id);
-                renderProductDetail(id);
-            });
+            document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', (e) => { 
+                if (!currentUser.email) { openAuthOverlay('Войдите, чтобы добавить товар в корзину'); return; }
+                const id = e.currentTarget.dataset.id; if(!cart.find(c=>String(c.productId)===String(id))) { addToCart(id); renderProductDetail(id); renderCatalog(); showToast('🛒 Добавлено в корзину!'); } });
+            document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; toggleFavorite(id); renderProductDetail(id); });
         }
         
         function getFilteredProducts() { 
@@ -868,7 +703,18 @@
             html+=`<div class="cart-summary"><p>Товаров: ${cart.reduce((s,i)=>s+i.qty,0)} шт.</p><p>Итого: <strong>${total.toLocaleString()} ₽</strong></p><button class="checkout-btn" id="orderBtn" style="width:auto;">Оформить заказ</button></div></div>`; 
             container.innerHTML=html; 
             
-            document.getElementById('orderBtn')?.addEventListener('click', () => { placeOrder(); }); 
+            document.getElementById('orderBtn')?.addEventListener('click',()=>{ 
+                if(!cart.length) return;
+                if(!currentUser.email) { openAuthOverlay('Войдите, чтобы оформить заказ'); return; }
+                currentUser.orders.unshift({ id:Date.now(), date:new Date().toLocaleDateString('ru-RU'), items:[...cart], total, status:'processing' }); 
+                cart=[]; 
+                saveAll(); 
+                updateCartBadge(); 
+                updateMiniCart(); 
+                renderCart(); 
+                renderCatalog(); 
+                showToast('🎉 Заказ оформлен!'); 
+            }); 
         }
 
         function renderFavorites() { 
@@ -894,32 +740,32 @@
             if((pageId==='profile') && !currentUser.email) { openAuthOverlay('Войдите, чтобы открыть профиль'); return; }
             document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page')); document.getElementById(`${pageId}Page`).classList.add('active-page'); document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active')); document.querySelector(`.nav-links a[data-nav="${pageId}"]`)?.classList.add('active'); if(pageId==='catalog') renderCatalog(); else if(pageId==='cart') renderCart(); else if(pageId==='favorites') renderFavorites(); else if(pageId==='contacts') renderContacts(); else if(pageId==='profile') renderProfile(); window.scrollTo({top:0,behavior:'smooth'}); }
         
-        async function init() { 
-            await loadData(); 
+        function init() { 
+            loadData(); 
             
             fetchProductsFromDB();
             
             // ВАЖНО: Делегирование кликов для сеток товаров (для Каталога и Избранного)
-            const handleGridClick = async (e) => {
+            const handleGridClick = (e) => {
                 const favBtn = e.target.closest('.favorite-btn');
                 if (favBtn) {
                     e.stopPropagation();
-                    await toggleFavorite(favBtn.dataset.id);
+                    toggleFavorite(favBtn.dataset.id);
                     return;
                 }
                 
                 const cartBtn = e.target.closest('.add-to-cart-btn');
                 if (cartBtn) {
                     e.stopPropagation();
-                    if (!currentUser.id) {
+                    if (!currentUser.email) {
                         openAuthOverlay('Войдите, чтобы добавить товар в корзину');
                         return;
                     }
                     const id = cartBtn.dataset.id;
-                    if (!cart.find(c => String(c.productId) === String(id))) {
-                        await addToCart(id);
+                    if(!cart.find(c=>String(c.productId)===String(id))){
+                        addToCart(id);
                         renderCatalog();
-                        if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+                        if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
                         showToast('🛒 Добавлено в корзину!');
                     }
                     return;
