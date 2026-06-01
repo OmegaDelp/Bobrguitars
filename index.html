@@ -124,11 +124,13 @@
         /* ===== AUTH OVERLAY & MODAL ===== */
         #authOverlay {
             position: fixed; inset: 0; z-index: 9000;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            display: flex; align-items: center; justify-content: center;
-            opacity: 1; transition: opacity 0.5s ease;
+            background: rgba(15, 20, 40, 0.75);
+            display: none; align-items: center; justify-content: center;
+            opacity: 1; transition: opacity 0.3s ease;
+            backdrop-filter: blur(4px);
         }
         #authOverlay.hidden { opacity: 0; pointer-events: none; }
+        #authOverlay.visible { display: flex; }
         .auth-bg-pattern {
             position: absolute; inset: 0; overflow: hidden; pointer-events: none;
         }
@@ -200,6 +202,14 @@
         .auth-hint { text-align: center; margin-top: 16px; font-size: 0.8rem; color: var(--text-muted); }
         .auth-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        /* Close button for auth modal */
+        .auth-close-btn {
+            position: absolute; top: 16px; right: 16px;
+            background: var(--gray-light); border: none; width: 36px; height: 36px;
+            border-radius: 50%; cursor: pointer; font-size: 1rem; color: var(--text-muted);
+            display: flex; align-items: center; justify-content: center; transition: 0.2s;
+        }
+        .auth-close-btn:hover { background: #e0e0e0; color: #1e1e2a; }
         /* Navbar auth state */
         #authNavBtn {
             background: var(--primary); color: white; border: none;
@@ -212,12 +222,12 @@
 </head>
 <body>
 
-    <div id="authOverlay">
-        <div class="auth-bg-pattern"></div>
+    <div id="authOverlay" onclick="closeAuthOverlay(event)">
         <div class="auth-card">
+            <button class="auth-close-btn" onclick="closeAuthOverlay(null, true)" title="Закрыть"><i class="fas fa-times"></i></button>
             <div class="auth-logo">
                 <h2>🎸 GuitarShop</h2>
-                <p>Войдите или создайте аккаунт</p>
+                <p id="authOverlayHint">Войдите или создайте аккаунт</p>
             </div>
 
             <div class="auth-tabs">
@@ -286,6 +296,9 @@
                     <span id="headerUserName">Пользователь</span>
                     <i class="fas fa-sign-out-alt" style="margin-left:4px; font-size:0.85rem; color:var(--text-muted);"></i>
                 </div>
+            </div>
+            <div id="navGuestBlock">
+                <button id="authNavBtn" onclick="openAuthOverlay()"><i class="fas fa-sign-in-alt"></i> Войти</button>
             </div>
         </div>
     </div>
@@ -374,7 +387,28 @@
                 : defaultHTML;
         }
 
-        // ===== AUTH ACTIONS =====
+        // ===== AUTH MODAL OPEN/CLOSE =====
+        function openAuthOverlay(hint) {
+            const overlay = document.getElementById('authOverlay');
+            const hintEl = document.getElementById('authOverlayHint');
+            if(hintEl) hintEl.textContent = hint || 'Войдите или создайте аккаунт';
+            clearAuthErrors();
+            showAuthTab('login');
+            overlay.classList.add('visible');
+            overlay.classList.remove('hidden');
+        }
+
+        function closeAuthOverlay(event, force) {
+            if(!force && event && event.target !== document.getElementById('authOverlay')) return;
+            const overlay = document.getElementById('authOverlay');
+            overlay.classList.add('hidden');
+            setTimeout(() => {
+                overlay.classList.remove('visible');
+                overlay.classList.remove('hidden');
+            }, 300);
+        }
+
+        // ===== AUTH MODAL OPEN/CLOSE =====
         async function handleLogin() {
             clearAuthErrors();
             const email = document.getElementById('loginEmail').value.trim();
@@ -446,11 +480,10 @@
             document.getElementById('headerAvatar').innerText = avatar;
             document.getElementById('headerUserName').innerText = name;
             document.getElementById('navUserBlock').style.display = 'flex';
+            document.getElementById('navGuestBlock').style.display = 'none';
             
             // Закрытие оверлея авторизации
-            const overlay = document.getElementById('authOverlay');
-            overlay.classList.add('hidden');
-            setTimeout(() => overlay.style.display = 'none', 500);
+            closeAuthOverlay(null, true);
 
             // Если открыта страница профиля или корзины, обновляем их отображение
             if (document.getElementById('profilePage').classList.contains('active-page')) renderProfile();
@@ -466,9 +499,7 @@
             loadData();
             
             document.getElementById('navUserBlock').style.display = 'none';
-            const overlay = document.getElementById('authOverlay');
-            overlay.style.display = 'flex';
-            setTimeout(() => overlay.classList.remove('hidden'), 10);
+            document.getElementById('navGuestBlock').style.display = 'flex';
             
             ['loginEmail','loginPassword','regName','regEmail','regPassword'].forEach(id => {
                 const el = document.getElementById(id); if(el) el.value = '';
@@ -625,7 +656,9 @@
             const html = `<div class="product-detail-page"><div class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Вернуться к каталогу</div><div class="detail-grid"><div class="detail-image ${product.imageClass || ''}"><span style="font-size:6rem;">${product.emoji || '🎸'}</span>${product.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':product.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':''}</div><div class="detail-info"><h2>${product.title}</h2><div class="product-rating">${'★'.repeat(Math.floor(product.rating || 5))}${(product.rating || 5)%1>=0.5?'★':'☆'} ${product.rating || 5} <span>(${product.reviews || 0} отзывов)</span></div><div class="detail-price">${displayPrice.toLocaleString()} ₽${product.oldPrice?`<span class="detail-old-price">${product.oldPrice.toLocaleString()} ₽</span>`:''}</div><div class="detail-description"><strong>Описание:</strong> ${product.description || ''}</div>${specsHtml}<div class="detail-actions"><button class="add-to-cart-btn ${inCart?'in-cart':''}" data-id="${product.id}"><i class="fas ${inCart?'fa-check':'fa-cart-plus'}"></i> ${inCart?'В корзине':'В корзину'}</button><button class="favorite-btn ${inFav?'liked':''}" data-id="${product.id}"><i class="${inFav?'fas':'far'} fa-heart"></i> ${inFav?'В избранном':'В избранное'}</button></div></div></div></div>`;
             document.getElementById('productDetailPage').innerHTML = html;
             
-            document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; if(!cart.find(c=>String(c.productId)===String(id))) { addToCart(id); renderProductDetail(id); renderCatalog(); showToast('🛒 Добавлено в корзину!'); } });
+            document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', (e) => { 
+                if (!currentUser.email) { openAuthOverlay('Войдите, чтобы добавить товар в корзину'); return; }
+                const id = e.currentTarget.dataset.id; if(!cart.find(c=>String(c.productId)===String(id))) { addToCart(id); renderProductDetail(id); renderCatalog(); showToast('🛒 Добавлено в корзину!'); } });
             document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; toggleFavorite(id); renderProductDetail(id); });
         }
         
@@ -671,7 +704,8 @@
             container.innerHTML=html; 
             
             document.getElementById('orderBtn')?.addEventListener('click',()=>{ 
-                if(!cart.length) return; 
+                if(!cart.length) return;
+                if(!currentUser.email) { openAuthOverlay('Войдите, чтобы оформить заказ'); return; }
                 currentUser.orders.unshift({ id:Date.now(), date:new Date().toLocaleDateString('ru-RU'), items:[...cart], total, status:'processing' }); 
                 cart=[]; 
                 saveAll(); 
@@ -702,7 +736,9 @@
         function renderContacts() { document.getElementById('contactsPage').innerHTML = `<div class="contacts-card"><h2>📞 Контакты</h2><p><i class="fas fa-map-marker-alt"></i> <strong>Адрес:</strong> г. Москва, ул. Музыкальная, д. 7, ТЦ «Аккорд», 2 этаж</p><p><i class="fas fa-phone"></i> <strong>Телефон:</strong> +7 (495) 123-45-67</p><p><i class="fas fa-envelope"></i> <strong>Email:</strong> info@guitarshop.ru</p><p><i class="fas fa-clock"></i> <strong>Часы работы:</strong> Пн-Сб 10:00–21:00, Вс 11:00–19:00</p><div style="margin-top:20px; background:var(--gray-light); border-radius:18px; padding:16px;"><h4>🅿️ Парковка</h4><p>Бесплатная парковка для посетителей магазина на 30 мест.</p></div></div>`; }
         function renderProfile() { const ordersHtml = (!currentUser.orders || currentUser.orders.length===0)?'<p style="color:var(--text-muted);">У вас пока нет заказов.</p>':currentUser.orders.map(o=>`<div class="order-history-item"><div><strong>Заказ #${o.id.toString().slice(-6)}</strong><div style="font-size:0.8rem;">${o.date} • ${o.items.length} поз.</div></div><div>${o.total.toLocaleString()} ₽</div><div class="${o.status==='delivered'?'status-delivered':'status-processing'}">${o.status==='delivered'?'✅ Доставлен':'⏳ В обработке'}</div></div>`).join(''); document.getElementById('profilePage').innerHTML = `<div class="profile-card"><div class="avatar-sm" style="width:80px; height:80px; font-size:2rem; margin:0 auto; background:var(--primary);">${currentUser.avatar || 'U'}</div><h2 style="margin-top:12px;">${currentUser.name || 'Пользователь'}</h2><p style="color:var(--text-muted);">Постоянный покупатель</p><div style="display:flex; justify-content:center; gap:32px; margin:20px 0;"><div><strong>${currentUser.orders ? currentUser.orders.length : 0}</strong> заказов</div><div><strong>${favorites.length}</strong> в избранном</div></div></div><h3 style="margin:28px 0 16px;">📦 История заказов</h3><div style="background:white; border-radius:28px; border:1px solid var(--gray-border); padding:20px;">${ordersHtml}</div>`; }
         
-        function switchPage(pageId) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page')); document.getElementById(`${pageId}Page`).classList.add('active-page'); document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active')); document.querySelector(`.nav-links a[data-nav="${pageId}"]`)?.classList.add('active'); if(pageId==='catalog') renderCatalog(); else if(pageId==='cart') renderCart(); else if(pageId==='favorites') renderFavorites(); else if(pageId==='contacts') renderContacts(); else if(pageId==='profile') renderProfile(); window.scrollTo({top:0,behavior:'smooth'}); }
+        function switchPage(pageId) { 
+            if((pageId==='profile') && !currentUser.email) { openAuthOverlay('Войдите, чтобы открыть профиль'); return; }
+            document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page')); document.getElementById(`${pageId}Page`).classList.add('active-page'); document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active')); document.querySelector(`.nav-links a[data-nav="${pageId}"]`)?.classList.add('active'); if(pageId==='catalog') renderCatalog(); else if(pageId==='cart') renderCart(); else if(pageId==='favorites') renderFavorites(); else if(pageId==='contacts') renderContacts(); else if(pageId==='profile') renderProfile(); window.scrollTo({top:0,behavior:'smooth'}); }
         
         function init() { 
             loadData(); 
@@ -721,6 +757,10 @@
                 const cartBtn = e.target.closest('.add-to-cart-btn');
                 if (cartBtn) {
                     e.stopPropagation();
+                    if (!currentUser.email) {
+                        openAuthOverlay('Войдите, чтобы добавить товар в корзину');
+                        return;
+                    }
                     const id = cartBtn.dataset.id;
                     if(!cart.find(c=>String(c.productId)===String(id))){
                         addToCart(id);
@@ -773,7 +813,10 @@
                 renderCatalog(); 
             }); 
             
-            document.getElementById('miniCheckoutBtn').addEventListener('click',()=>switchPage('cart')); 
+            document.getElementById('miniCheckoutBtn').addEventListener('click',()=>{
+                if(!currentUser.email) { openAuthOverlay('Войдите, чтобы оформить заказ'); return; }
+                switchPage('cart');
+            }); 
             
             document.getElementById('logoutBtn').addEventListener('click', async () => { 
                 if(confirm('Выйти из аккаунта?')){ 
@@ -821,6 +864,8 @@
         window.togglePw = togglePw;
         window.handleLogin = handleLogin;
         window.handleRegister = handleRegister;
+        window.openAuthOverlay = openAuthOverlay;
+        window.closeAuthOverlay = closeAuthOverlay;
     </script>
 </body>
 </html>
