@@ -28,9 +28,14 @@
         .nav-links a:hover, .nav-links a.active { color: var(--primary); }
         .cart-nav-btn { background: var(--primary); color: white !important; padding: 8px 18px; border-radius: 40px; position: relative; }
         .cart-badge { position: absolute; top: -6px; right: -6px; background: #1e1e2a; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; font-weight: 700; border: 2px solid white; }
-        .profile-mini { display: flex; align-items: center; gap: 12px; background: var(--gray-light); padding: 6px 14px; border-radius: 40px; cursor: pointer; transition: 0.2s; }
+        
+        /* Кнопки профиля и авторизации */
+        .profile-mini { display: none; align-items: center; gap: 12px; background: var(--gray-light); padding: 6px 14px; border-radius: 40px; cursor: pointer; transition: 0.2s; }
         .profile-mini:hover { background: #e8e8e8; }
-        .avatar-sm { width: 36px; height: 36px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .auth-nav-btn { display: flex; align-items: center; gap: 8px; background: #1e1e2a; color: white; padding: 8px 18px; border-radius: 40px; cursor: pointer; font-weight: 500; transition: 0.2s; }
+        .auth-nav-btn:hover { background: var(--primary); }
+        
+        .avatar-sm { width: 36px; height: 36px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; text-transform: uppercase; }
         .main-grid { display: grid; grid-template-columns: 280px minmax(300px, 860px) 320px; gap: 32px; margin: 32px auto; justify-content: center; align-items: start; }
         .center-content { width: 100%; background: transparent; }
         .sidebar-left { background: white; border-radius: 24px; padding: 20px 12px; border: 1px solid var(--gray-border); position: sticky; top: 90px; height: fit-content; box-shadow: var(--shadow); }
@@ -99,6 +104,7 @@
         @media (max-width: 640px) { .container { padding: 0 16px; } .nav-inner { flex-direction: column; align-items: stretch; } .nav-links { justify-content: center; } .products-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); } }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1f1f2b; color: white; padding: 12px 24px; border-radius: 48px; z-index: 999; font-size: 0.9rem; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
         .favorites-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+        
         /* Стили страницы товара */
         .product-detail-page { background: white; border-radius: 32px; border: 1px solid var(--gray-border); padding: 32px; box-shadow: var(--shadow); }
         .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
@@ -118,6 +124,19 @@
         .back-to-catalog { display: inline-block; margin-bottom: 24px; color: var(--primary); cursor: pointer; font-weight: 500; }
         .back-to-catalog i { margin-right: 6px; }
         @media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; gap: 24px; } .detail-image { min-height: 260px; font-size: 5rem; } }
+
+        /* Модальное окно Auth */
+        .auth-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; }
+        .auth-modal.active { display: flex; }
+        .auth-box { background: white; padding: 32px; border-radius: 24px; max-width: 400px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); position: relative; }
+        .auth-box h3 { font-size: 1.5rem; margin-bottom: 18px; font-weight: 700; color: #1e1e2a; }
+        .auth-close { position: absolute; top: 20px; right: 20px; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); }
+        .auth-input { width: 100%; padding: 12px 18px; border-radius: 30px; border: 1px solid var(--gray-border); margin-bottom: 12px; font-family: inherit; font-size: 0.95rem; outline: none; }
+        .auth-input:focus { border-color: var(--primary); }
+        .auth-btn { background: var(--primary); color: white; width: 100%; border: none; padding: 12px; border-radius: 30px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: 0.2s; font-size: 1rem; }
+        .auth-btn:hover { background: var(--primary-dark); }
+        .auth-switch { text-align: center; margin-top: 16px; font-size: 0.85rem; color: var(--text-muted); }
+        .auth-switch span { color: var(--primary); cursor: pointer; font-weight: 600; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -131,7 +150,27 @@
                 <a data-nav="profile"><i class="fas fa-user"></i> Профиль</a>
                 <a data-nav="cart" class="cart-nav-btn"><i class="fas fa-shopping-cart"></i> Корзина<span class="cart-badge" id="cartBadge">0</span></a>
             </div>
-            <div class="profile-mini" id="logoutBtn"><div class="avatar-sm" id="headerAvatar">А</div><span id="headerUserName">Илья</span><i class="fas fa-chevron-down"></i></div>
+            <div class="auth-nav-btn" id="openAuthBtn"><i class="fas fa-sign-in-alt"></i> Войти</div>
+            <div class="profile-mini" id="logoutBtn">
+                <div class="avatar-sm" id="headerAvatar">-</div>
+                <span id="headerUserName">Гость</span>
+                <i class="fas fa-sign-out-alt" style="margin-left: 4px; font-size: 0.85rem; color: var(--text-muted);"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="auth-modal" id="authModal">
+        <div class="auth-box">
+            <i class="fas fa-times auth-close" id="closeAuthBtn"></i>
+            <h3 id="authTitle">Вход в аккаунт</h3>
+            <form id="authForm">
+                <input type="email" id="authEmail" class="auth-input" placeholder="Email" required>
+                <input type="password" id="authPassword" class="auth-input" placeholder="Пароль (мин. 6 символов)" required>
+                <button type="submit" class="auth-btn" id="authSubmitBtn">Войти</button>
+            </form>
+            <div class="auth-switch" id="authSwitchText">
+                Нет аккаунта? <span id="authSwitchBtn">Зарегистрироваться</span>
+            </div>
         </div>
     </div>
 
@@ -172,7 +211,6 @@
     <footer><div class="container"><p>🎸 GuitarShop — магазин гитар и музыкальных инструментов • Доставка по всей России</p><p>© 2026, GuitarShop | Все права защищены</p></div></footer>
 
     <script>
-        // Инициализация Supabase клиента (замените на ваши настоящие доступы)
         const SUPABASE_URL = 'https://qabxmbovewujnxrydnjf.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhYnhtYm92ZXd1am54cnlkbmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODYzNTYsImV4cCI6MjA5NTU2MjM1Nn0.3XjKvkjHq7z9hiqaiTs8hHw0caQSdRjMG6UoE251jgU';
         const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -180,43 +218,88 @@
         let products = [];
         let cart = []; 
         let favorites = []; 
-        let currentUser = { name: 'Илья', avatar: 'А', orders: [] }; 
+        let currentUser = null; // По умолчанию пользователь не авторизован
+        let isSignUpMode = false; // Режим формы auth: false = вход, true = регистрация
+        
         let currentCategory = 'all'; 
         let currentSort = 'default'; 
         let currentSearch = ''; 
         let maxPrice = 300000;
 
-        // Новая функция асинхронной загрузки товаров из базы Supabase
         async function fetchProductsFromDB() {
             if (!supabaseClient) {
                 console.error("Supabase не инициализирован. Проверьте ключи.");
                 return;
             }
             try {
-                // Название таблицы в вашей базе Supabase должно быть 'products'
                 const { data, error } = await supabaseClient.from('products').select('*');
                 if (error) throw error;
                 
-                // Маппинг snake_case (Supabase) → camelCase (JS)
                 products = (data || []).map(p => ({
                     ...p,
                     oldPrice: p.old_price,
                     imageClass: p.image_class,
                 }));
-                renderCatalog(); // Перерисовываем каталог, когда товары успешно прибыли
+                renderCatalog();
+                updateMiniCart();
             } catch (error) {
                 console.error("Ошибка загрузки товаров из Supabase:", error.message);
                 showToast("❌ Ошибка загрузки каталога");
             }
         }
 
+        // Отслеживание сессии авторизации Supabase Auth
+        function initAuthListener() {
+            if (!supabaseClient) return;
+
+            // Проверяем текущего юзера сразу при загрузке страницы
+            supabaseClient.auth.getUser().then(({ data: { user } }) => {
+                handleUserChange(user);
+            });
+
+            // Подписываемся на изменения состояния (вход, выход, регистрация)
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                const user = session ? session.user : null;
+                handleUserChange(user);
+            });
+        }
+
+        function handleUserChange(user) {
+            const openAuthBtn = document.getElementById('openAuthBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+
+            if (user) {
+                // Извлекаем имя из email или user_metadata
+                const name = user.user_metadata?.full_name || user.email.split('@')[0];
+                currentUser = {
+                    id: user.id,
+                    name: name,
+                    avatar: name.charAt(0).toUpperCase(),
+                    email: user.email,
+                    orders: currentUser?.orders || [] // Сохраняем локальные заказы для демо
+                };
+                
+                // Переключаем кнопки в шапке
+                openAuthBtn.style.display = 'none';
+                logoutBtn.style.display = 'flex';
+                document.getElementById('headerAvatar').innerText = currentUser.avatar; 
+                document.getElementById('headerUserName').innerText = currentUser.name;
+            } else {
+                currentUser = null;
+                openAuthBtn.style.display = 'flex';
+                logoutBtn.style.display = 'none';
+            }
+            
+            // Если мы находимся на вкладке профиля, обновляем её
+            if(document.getElementById('profilePage').classList.contains('active-page')) {
+                renderProfile();
+            }
+        }
+
         function loadData() {
-            if(!currentUser.orders) currentUser.orders = [];
             updateCartBadge(); 
             updateMiniCart();
         }
-
-        function saveAll() {}
 
         function updateCartBadge() { document.getElementById('cartBadge').innerText = cart.reduce((s,i)=>s+i.qty,0); }
         
@@ -248,7 +331,6 @@
             const ex = cart.find(c=>String(c.productId)===String(productId)); 
             if(ex) ex.qty+=qty; 
             else cart.push({ productId, qty }); 
-            saveAll(); 
             updateCartBadge(); 
             updateMiniCart(); 
             if(document.getElementById('cartPage').classList.contains('active-page')) renderCart(); 
@@ -256,7 +338,6 @@
 
         function removeFromCart(productId) { 
             cart = cart.filter(c=>String(c.productId)!==String(productId)); 
-            saveAll(); 
         }
 
         function updateCartQty(productId, delta) { 
@@ -264,7 +345,6 @@
             if(item) { 
                 item.qty+=delta; 
                 if(item.qty<=0) removeFromCart(productId); 
-                saveAll(); 
                 updateCartBadge(); 
                 updateMiniCart(); 
                 renderCart(); 
@@ -284,7 +364,6 @@
                 favorites.push(productId); 
                 showToast('❤️ Добавлено в избранное'); 
             } 
-            saveAll(); 
             renderCatalog(); 
             if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites(); 
             if(document.getElementById('productDetailPage').classList.contains('active-page')) { 
@@ -304,7 +383,6 @@
             const html = `<div class="product-detail-page"><div class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Вернуться к каталогу</div><div class="detail-grid"><div class="detail-image ${product.imageClass || ''}"><span style="font-size:6rem;">${product.emoji || '🎸'}</span>${product.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':product.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':''}</div><div class="detail-info"><h2>${product.title}</h2><div class="product-rating">${'★'.repeat(Math.floor(product.rating || 5))}${(product.rating || 5)%1>=0.5?'★':'☆'} ${product.rating || 5} <span>(${product.reviews || 0} отзывов)</span></div><div class="detail-price">${displayPrice.toLocaleString()} ₽${product.oldPrice?`<span class="detail-old-price">${product.oldPrice.toLocaleString()} ₽</span>`:''}</div><div class="detail-description"><strong>Описание:</strong> ${product.description || ''}</div>${specsHtml}<div class="detail-actions"><button class="add-to-cart-btn ${inCart?'in-cart':''}" data-id="${product.id}"><i class="fas ${inCart?'fa-check':'fa-cart-plus'}"></i> ${inCart?'В корзине':'В корзину'}</button><button class="favorite-btn ${inFav?'liked':''}" data-id="${product.id}"><i class="${inFav?'fas':'far'} fa-heart"></i> ${inFav?'В избранном':'В избранное'}</button></div></div></div></div>`;
             document.getElementById('productDetailPage').innerHTML = html;
             
-            // Локальные события для детальной страницы
             document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; if(!cart.find(c=>String(c.productId)===String(id))) { addToCart(id); renderProductDetail(id); renderCatalog(); showToast('🛒 Добавлено в корзину!'); } });
             document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; toggleFavorite(id); renderProductDetail(id); });
         }
@@ -330,7 +408,6 @@
             let html = ''; filtered.forEach(p=>{ const inFav=favorites.includes(String(p.id)), cartItem=cart.find(c=>String(c.productId)===String(p.id)), displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:'', badgeHtml=p.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':p.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':'';
                 html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.imageClass||''}">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button><span style="font-size:4rem;">${p.emoji || '🎸'}</span></div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand || ''}</div><div class="product-title">${p.title}</div><div class="product-rating">${'★'.repeat(Math.floor(p.rating || 5))}${(p.rating || 5)%1>=0.5?'★':'☆'} ${p.rating || 5} <span>(${p.reviews || 0})</span></div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
             }); grid.innerHTML=html;
-            // Старые циклы добавления обработчиков событий удалены отсюда, так как теперь используется умное делегирование!
         }
         
         function renderCart() { 
@@ -353,9 +430,13 @@
             
             document.getElementById('orderBtn')?.addEventListener('click',()=>{ 
                 if(!cart.length) return; 
+                if(!currentUser) {
+                    showToast('⚠️ Пожалуйста, войдите в аккаунт для оформления заказа!');
+                    document.getElementById('authModal').classList.add('active');
+                    return;
+                }
                 currentUser.orders.unshift({ id:Date.now(), date:new Date().toLocaleDateString('ru-RU'), items:[...cart], total, status:'processing' }); 
                 cart=[]; 
-                saveAll(); 
                 updateCartBadge(); 
                 updateMiniCart(); 
                 renderCart(); 
@@ -381,22 +462,93 @@
         }
         
         function renderContacts() { document.getElementById('contactsPage').innerHTML = `<div class="contacts-card"><h2>📞 Контакты</h2><p><i class="fas fa-map-marker-alt"></i> <strong>Адрес:</strong> г. Москва, ул. Музыкальная, д. 7, ТЦ «Аккорд», 2 этаж</p><p><i class="fas fa-phone"></i> <strong>Телефон:</strong> +7 (495) 123-45-67</p><p><i class="fas fa-envelope"></i> <strong>Email:</strong> info@guitarshop.ru</p><p><i class="fas fa-clock"></i> <strong>Часы работы:</strong> Пн-Сб 10:00–21:00, Вс 11:00–19:00</p><div style="margin-top:20px; background:var(--gray-light); border-radius:18px; padding:16px;"><h4>🅿️ Парковка</h4><p>Бесплатная парковка для посетителей магазина на 30 мест.</p></div></div>`; }
-        function renderProfile() { const ordersHtml = currentUser.orders.length===0?'<p style="color:var(--text-muted);">У вас пока нет заказов.</p>':currentUser.orders.map(o=>`<div class="order-history-item"><div><strong>Заказ #${o.id.toString().slice(-6)}</strong><div style="font-size:0.8rem;">${o.date} • ${o.items.length} поз.</div></div><div>${o.total.toLocaleString()} ₽</div><div class="${o.status==='delivered'?'status-delivered':'status-processing'}">${o.status==='delivered'?'✅ Доставлен':'⏳ В обработке'}</div></div>`).join(''); document.getElementById('profilePage').innerHTML = `<div class="profile-card"><div class="avatar-sm" style="width:80px; height:80px; font-size:2rem; margin:0 auto; background:var(--primary);">${currentUser.avatar}</div><h2 style="margin-top:12px;">${currentUser.name}</h2><p style="color:var(--text-muted);">Постоянный покупатель</p><div style="display:flex; justify-content:center; gap:32px; margin:20px 0;"><div><strong>${currentUser.orders.length}</strong> заказов</div><div><strong>${favorites.length}</strong> в избранном</div></div></div><h3 style="margin:28px 0 16px;">📦 История заказов</h3><div style="background:white; border-radius:28px; border:1px solid var(--gray-border); padding:20px;">${ordersHtml}</div>`; }
+        
+        function renderProfile() { 
+            if (!currentUser) {
+                document.getElementById('profilePage').innerHTML = `<div class="profile-card"><h2>🔒 Личный кабинет</h2><p style="color:var(--text-muted); margin: 16px 0;">Войдите в свой аккаунт, чтобы просматривать историю заказов и управлять профилем.</p><button class="checkout-btn" style="width:auto;" onclick="document.getElementById('authModal').classList.add('active')">Войти на сайт</button></div>`;
+                return;
+            }
+            const ordersHtml = currentUser.orders.length===0?'<p style="color:var(--text-muted);">У вас пока нет заказов.</p>':currentUser.orders.map(o=>`<div class="order-history-item"><div><strong>Заказ #${o.id.toString().slice(-6)}</strong><div style="font-size:0.8rem;">${o.date} • ${o.items.length} поз.</div></div><div>${o.total.toLocaleString()} ₽</div><div class="${o.status==='delivered'?'status-delivered':'status-processing'}">${o.status==='delivered'?'✅ Доставлен':'⏳ В обработке'}</div></div>`).join(''); document.getElementById('profilePage').innerHTML = `<div class="profile-card"><div class="avatar-sm" style="width:80px; height:80px; font-size:2rem; margin:0 auto; background:var(--primary);">${currentUser.avatar}</div><h2 style="margin-top:12px;">${currentUser.name}</h2><p style="color:var(--text-muted);">${currentUser.email}</p><div style="display:flex; justify-content:center; gap:32px; margin:20px 0;"><div><strong>${currentUser.orders.length}</strong> заказов</div><div><strong>${favorites.length}</strong> в избранном</div></div></div><h3 style="margin:28px 0 16px;">📦 История заказов</h3><div style="background:white; border-radius:28px; border:1px solid var(--gray-border); padding:20px;">${ordersHtml}</div>`; 
+        }
         
         function switchPage(pageId) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page')); document.getElementById(`${pageId}Page`).classList.add('active-page'); document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active')); document.querySelector(`.nav-links a[data-nav="${pageId}"]`)?.classList.add('active'); if(pageId==='catalog') renderCatalog(); else if(pageId==='cart') renderCart(); else if(pageId==='favorites') renderFavorites(); else if(pageId==='contacts') renderContacts(); else if(pageId==='profile') renderProfile(); window.scrollTo({top:0,behavior:'smooth'}); }
         
         function init() { 
             loadData(); 
-            
-            // Запускаем асинхронное чтение товаров из Supabase
             fetchProductsFromDB();
+            initAuthListener(); // Включаем авторизацию
+
+            // Управление модальным окном Auth
+            const authModal = document.getElementById('authModal');
+            document.getElementById('openAuthBtn').addEventListener('click', () => {
+                authModal.classList.add('active');
+            });
+            document.getElementById('closeAuthBtn').addEventListener('click', () => {
+                authModal.classList.remove('active');
+            });
+
+            // Переключатель Регистрация / Вход
+            const authSwitchBtn = document.getElementById('authSwitchBtn');
+            const authTitle = document.getElementById('authTitle');
+            const authSubmitBtn = document.getElementById('authSubmitBtn');
+            const authSwitchText = document.getElementById('authSwitchText');
+
+            authSwitchBtn.addEventListener('click', () => {
+                isSignUpMode = !isSignUpMode;
+                if (isSignUpMode) {
+                    authTitle.innerText = 'Регистрация аккаунта';
+                    authSubmitBtn.innerText = 'Зарегистрироваться';
+                    authSwitchText.innerHTML = 'Уже есть аккаунт? <span id="authSwitchBtn">Войти</span>';
+                } else {
+                    authTitle.innerText = 'Вход в аккаунт';
+                    authSubmitBtn.innerText = 'Войти';
+                    authSwitchText.innerHTML = 'Нет аккаунта? <span id="authSwitchBtn">Зарегистрироваться</span>';
+                }
+                // Повторно навешиваем клик на динамический span
+                document.getElementById('authSwitchBtn').addEventListener('click', arguments.callee);
+            });
+
+            // Отправка формы (Авторизация / Регистрация)
+            document.getElementById('authForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if(!supabaseClient) return;
+
+                const email = document.getElementById('authEmail').value;
+                const password = document.getElementById('authPassword').value;
+
+                try {
+                    if (isSignUpMode) {
+                        // Регистрация
+                        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                        if (error) throw error;
+                        showToast('🎉 Регистрация успешна!');
+                    } else {
+                        // Логин
+                        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                        if (error) throw error;
+                        showToast('🔑 Вы успешно вошли!');
+                    }
+                    authModal.classList.remove('active');
+                    document.getElementById('authForm').reset();
+                } catch (error) {
+                    console.error("Auth error:", error.message);
+                    showToast(`❌ Ошибка: ${error.message}`);
+                }
+            });
+
+            // Кнопка логаута
+            document.getElementById('logoutBtn').addEventListener('click', async () => {
+                if (confirm('Вы уверены, что хотите выйти из профиля?')) {
+                    if (supabaseClient) {
+                        await supabaseClient.auth.signOut();
+                        showToast('🔒 Вы вышли из аккаунта');
+                        switchPage('catalog');
+                    }
+                }
+            });
             
-            document.getElementById('headerAvatar').innerText=currentUser.avatar; 
-            document.getElementById('headerUserName').innerText=currentUser.name; 
-            
-            // ВАЖНО: Делегирование кликов для сеток товаров (для Каталога и Избранного)
+            // Делегирование кликов для сеток товаров
             const handleGridClick = (e) => {
-                // Клик по кнопке "В избранное"
                 const favBtn = e.target.closest('.favorite-btn');
                 if (favBtn) {
                     e.stopPropagation();
@@ -404,7 +556,6 @@
                     return;
                 }
                 
-                // Клик по кнопке "Добавить в корзину"
                 const cartBtn = e.target.closest('.add-to-cart-btn');
                 if (cartBtn) {
                     e.stopPropagation();
@@ -418,7 +569,6 @@
                     return;
                 }
                 
-                // Клик по самой карточке (переход на детальную страницу)
                 const card = e.target.closest('.product-card');
                 if (card) {
                     renderProductDetail(card.dataset.id);
@@ -426,16 +576,13 @@
                 }
             };
 
-            // Привязываем один общий обработчик на контейнеры каталога и избранного
             document.getElementById('productsGrid').addEventListener('click', handleGridClick);
             document.getElementById('favoritesPage').addEventListener('click', handleGridClick);
             
-            // Навигация
             document.querySelectorAll('.nav-links a[data-nav]').forEach(link=>{ 
                 link.addEventListener('click',(e)=>{ e.preventDefault(); switchPage(link.dataset.nav); }); 
             }); 
             
-            // Фильтры категорий
             document.querySelectorAll('.menu-item[data-category]').forEach(item=>{ 
                 item.addEventListener('click',()=>{ 
                     document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); 
@@ -464,12 +611,6 @@
             
             document.getElementById('miniCheckoutBtn').addEventListener('click',()=>switchPage('cart')); 
             
-            document.getElementById('logoutBtn').addEventListener('click',()=>{ 
-                if(confirm('Сбросить текущую сессию и очистить данные приложения?')){ 
-                    cart = []; favorites = []; currentUser.orders = []; location.reload(); 
-                } 
-            }); 
-            
             document.querySelectorAll('.trending-tag').forEach(tag=>{ 
                 tag.addEventListener('click',()=>{ 
                     currentSearch=tag.innerText; 
@@ -485,4 +626,3 @@
         document.addEventListener('DOMContentLoaded', init); window.switchPage = switchPage; window.updateCartQty = updateCartQty;
     </script>
 </body>
-</html>
