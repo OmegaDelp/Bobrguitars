@@ -470,43 +470,149 @@
         let products = [];
         let cart = []; 
         let favorites = []; 
-        let currentUser = { name: 'Илья', avatar: 'А', orders: [] }; 
+        let currentUser = { name: '', avatar: '', email: '', orders: [] }; 
         let currentCategory = 'all'; 
         let currentSort = 'default'; 
         let currentSearch = ''; 
         let maxPrice = 300000;
 
-        // Новая функция асинхронной загрузки товаров из базы Supabase
+        // ===== СИНХРОНИЗАЦИЯ С БАЗОЙ ДАННЫХ SUPABASE =====
+
+        // Загрузка корзины и избранного из БД при авторизации
+        async function loadUserDataFromDB() {
+            if (!supabaseClient) return;
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) return;
+
+                // 1. Загружаем корзину
+                const { data: dbCart, error: cartErr } = await supabaseClient
+                    .from('cart')
+                    .select('product_id, qty');
+                if (cartErr) throw cartErr;
+                
+                cart = (dbCart || []).map(item => ({
+                    productId: String(item.product_id),
+                    qty: item.qty
+                }));
+
+                // 2. Загружаем избранное
+                const { data: dbFavs, error: favErr } = await supabaseClient
+                    .from('favorites')
+                    .select('product_id');
+                if (favErr) throw favErr;
+
+                favorites = (dbFavs || []).map(item => String(item.product_id));
+
+                // 3. Загружаем историю заказов (опционально, если таблица orders создана)
+                const { data: dbOrders, error: orderErr } = await supabaseClient
+                    .from('orders')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (!orderErr && dbOrders) {
+                    currentUser.orders = dbOrders.map(o => ({
+                        id: o.id,
+                        date: new Date(o.created_at).toLocaleDateString('ru-RU'),
+                        items: o.items, // Предполагается, что данные хранятся в jsonb
+                        total: o.total,
+                        status: o.status
+                    }));
+                }
+
+                // Обновляем интерфейс после загрузки данных
+                updateCartBadge(); 
+                updateMiniCart();
+                if(document.getElementById('cartPage').classList.contains('active-page')) renderCart();
+                if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+                if(document.getElementById('profilePage').classList.contains('active-page')) renderProfile();
+                renderCatalog();
+
+            } catch (error) {
+                console.error("Ошибка загрузки пользовательских данных:", error.message);
+            }
+        }
+
+        // Синхронизация корзины (перезапись текущего состояния в БД)
+        async function saveCartToDB() {
+            if (!supabaseClient) return;
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return;
+
+            try {
+                // Сначала удаляем старую корзину пользователя
+                await supabaseClient.from('cart').delete().eq('user_id', user.id);
+                
+                // Если в корзине что-то есть, записываем заново
+                if (cart.length > 0) {
+                    const insertRows = cart.map(item => ({
+                        user_id: user.id,
+                        product_id: item.productId,
+                        qty: item.qty
+                    }));
+                    const { error } = await supabaseClient.from('cart').insert(insertRows);
+                    if (error) throw error;
+                }
+            } catch (error) {
+                console.error("Ошибка сохранения корзины в БД:", error.message);
+            }
+        }
+
+        // Добавление / Удаление из избранного напрямую в БД
+        async function toggleFavoriteInDB(productId, isAdding) {
+            if (!supabaseClient) return;
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return;
+
+            try {
+                if (isAdding) {
+                    await supabaseClient.from('favorites').insert({
+                        user_id: user.id,
+                        product_id: productId
+                    });
+                } else {
+                    await supabaseClient.from('favorites')
+                        .delete()
+                        .eq('user_id', user.id)
+                        .eq('product_id', productId);
+                }
+            } catch (error) {
+                console.error("Ошибка изменения избранного в БД:", error.message);
+            }
+        }
+
+        // Асинхронная загрузка каталога товаров
         async function fetchProductsFromDB() {
             if (!supabaseClient) {
                 console.error("Supabase не инициализирован. Проверьте ключи.");
                 return;
             }
             try {
-                // Название таблицы в вашей базе Supabase должно быть 'products'
                 const { data, error } = await supabaseClient.from('products').select('*');
                 if (error) throw error;
                 
-                // Маппинг snake_case (Supabase) → camelCase (JS)
                 products = (data || []).map(p => ({
                     ...p,
                     oldPrice: p.old_price,
                     imageClass: p.image_class,
                 }));
-                renderCatalog(); // Перерисовываем каталог, когда товары успешно прибыли
+                renderCatalog();
             } catch (error) {
                 console.error("Ошибка загрузки товаров из Supabase:", error.message);
                 showToast("❌ Ошибка загрузки каталога");
             }
         }
 
+        // Переписываем заглушку сохранения под вызов нашей корзины
+        function saveAll() {
+            saveCartToDB();
+        }
+
+        // Старый метод loadData больше не нужен, данные грузятся через loadUserDataFromDB при входе
         function loadData() {
-            if(!currentUser.orders) currentUser.orders = [];
             updateCartBadge(); 
             updateMiniCart();
         }
-
-        function saveAll() {}
 
         function updateCartBadge() { document.getElementById('cartBadge').innerText = cart.reduce((s,i)=>s+i.qty,0); }
         
@@ -565,16 +671,22 @@
             } 
         }
 
-        function toggleFavorite(productId) { 
+        // Обновленная функция Избранного с поддержкой вызова операций с БД
+        async function toggleFavorite(productId) { 
             productId = String(productId);
+            let isAdding = false;
             if(favorites.includes(productId)) { 
                 favorites = favorites.filter(id=>id!==productId); 
                 showToast('💔 Удалено из избранного'); 
             } else { 
                 favorites.push(productId); 
-                showToast('❤️ Добавлено в избранное'); 
+                showToast('❤️ Добавлено в избранное');
+                isAdding = true;
             } 
-            saveAll(); 
+            
+            // Отправляем изменения в Supabase
+            await toggleFavoriteInDB(productId, isAdding);
+            
             renderCatalog(); 
             if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites(); 
             if(document.getElementById('productDetailPage').classList.contains('active-page')) { 
@@ -594,7 +706,6 @@
             const html = `<div class="product-detail-page"><div class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Вернуться к каталогу</div><div class="detail-grid"><div class="detail-image ${product.imageClass || ''}"><span style="font-size:6rem;">${product.emoji || '🎸'}</span>${product.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':product.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':''}</div><div class="detail-info"><h2>${product.title}</h2><div class="product-rating">${'★'.repeat(Math.floor(product.rating || 5))}${(product.rating || 5)%1>=0.5?'★':'☆'} ${product.rating || 5} <span>(${product.reviews || 0} отзывов)</span></div><div class="detail-price">${displayPrice.toLocaleString()} ₽${product.oldPrice?`<span class="detail-old-price">${product.oldPrice.toLocaleString()} ₽</span>`:''}</div><div class="detail-description"><strong>Описание:</strong> ${product.description || ''}</div>${specsHtml}<div class="detail-actions"><button class="add-to-cart-btn ${inCart?'in-cart':''}" data-id="${product.id}"><i class="fas ${inCart?'fa-check':'fa-cart-plus'}"></i> ${inCart?'В корзине':'В корзину'}</button><button class="favorite-btn ${inFav?'liked':''}" data-id="${product.id}"><i class="${inFav?'fas':'far'} fa-heart"></i> ${inFav?'В избранном':'В избранное'}</button></div></div></div></div>`;
             document.getElementById('productDetailPage').innerHTML = html;
             
-            // Локальные события для детальной страницы
             document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; if(!cart.find(c=>String(c.productId)===String(id))) { addToCart(id); renderProductDetail(id); renderCatalog(); showToast('🛒 Добавлено в корзину!'); } });
             document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; toggleFavorite(id); renderProductDetail(id); });
         }
@@ -620,7 +731,6 @@
             let html = ''; filtered.forEach(p=>{ const inFav=favorites.includes(String(p.id)), cartItem=cart.find(c=>String(c.productId)===String(p.id)), displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:'', badgeHtml=p.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':p.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':'';
                 html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.imageClass||''}">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button><span style="font-size:4rem;">${p.emoji || '🎸'}</span></div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand || ''}</div><div class="product-title">${p.title}</div><div class="product-rating">${'★'.repeat(Math.floor(p.rating || 5))}${(p.rating || 5)%1>=0.5?'★':'☆'} ${p.rating || 5} <span>(${p.reviews || 0})</span></div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
             }); grid.innerHTML=html;
-            // Старые циклы добавления обработчиков событий удалены отсюда, так как теперь используется умное делегирование!
         }
         
         function renderCart() { 
@@ -641,8 +751,22 @@
             html+=`<div class="cart-summary"><p>Товаров: ${cart.reduce((s,i)=>s+i.qty,0)} шт.</p><p>Итого: <strong>${total.toLocaleString()} ₽</strong></p><button class="checkout-btn" id="orderBtn" style="width:auto;">Оформить заказ</button></div></div>`; 
             container.innerHTML=html; 
             
-            document.getElementById('orderBtn')?.addEventListener('click',()=>{ 
+            document.getElementById('orderBtn')?.addEventListener('click', async () => { 
                 if(!cart.length) return; 
+                
+                // Пример отправки заказа в БД (если таблица orders существует)
+                try {
+                    const { data: { user } } = await supabaseClient.auth.getUser();
+                    if(user) {
+                        await supabaseClient.from('orders').insert({
+                            user_id: user.id,
+                            items: cart,
+                            total: total,
+                            status: 'processing'
+                        });
+                    }
+                } catch(e) { console.error("Не удалось сохранить заказ в БД", e); }
+
                 currentUser.orders.unshift({ id:Date.now(), date:new Date().toLocaleDateString('ru-RU'), items:[...cart], total, status:'processing' }); 
                 cart=[]; 
                 saveAll(); 
@@ -675,18 +799,47 @@
         
         function switchPage(pageId) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page')); document.getElementById(`${pageId}Page`).classList.add('active-page'); document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active')); document.querySelector(`.nav-links a[data-nav="${pageId}"]`)?.classList.add('active'); if(pageId==='catalog') renderCatalog(); else if(pageId==='cart') renderCart(); else if(pageId==='favorites') renderFavorites(); else if(pageId==='contacts') renderContacts(); else if(pageId==='profile') renderProfile(); window.scrollTo({top:0,behavior:'smooth'}); }
         
-        function init() { 
-            loadData(); 
+        // ===== AUTH STATE HANDLER =====
+        function onUserLoggedIn(user) {
+            const name = user.user_metadata?.full_name || user.email.split('@')[0];
+            const avatar = name.charAt(0).toUpperCase();
+            currentUser.name = name;
+            currentUser.avatar = avatar;
+            currentUser.email = user.email;
+            document.getElementById('headerAvatar').innerText = avatar;
+            document.getElementById('headerUserName').innerText = name;
+            document.getElementById('navUserBlock').style.display = 'flex';
             
-            // Запускаем асинхронное чтение товаров из Supabase
+            // Загружаем данные пользователя из БД, как только сессия подтверждена
+            loadUserDataFromDB();
+
+            const overlay = document.getElementById('authOverlay');
+            overlay.classList.add('hidden');
+            setTimeout(() => overlay.style.display = 'none', 500);
+        }
+
+        function onUserLoggedOut() {
+            currentUser = { name: '', avatar: '', email: '', orders: [] };
+            cart = []; favorites = [];
+            updateCartBadge();
+            updateMiniCart();
+            document.getElementById('navUserBlock').style.display = 'none';
+            const overlay = document.getElementById('authOverlay');
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.classList.remove('hidden'), 10);
+            ['loginEmail','loginPassword','regName','regEmail','regPassword'].forEach(id => {
+                const el = document.getElementById(id); if(el) el.value = '';
+            });
+            clearAuthErrors();
+            showAuthTab('login');
+        }
+
+        function init() { 
+            // Инициализация каталога
             fetchProductsFromDB();
             
-            document.getElementById('headerAvatar').innerText=currentUser.avatar; 
-            document.getElementById('headerUserName').innerText=currentUser.name; 
-            
-            // ВАЖНО: Делегирование кликов для сеток товаров (для Каталога и Избранного)
+            // Делегирование кликов для сеток товаров
             const handleGridClick = (e) => {
-                // Клик по кнопке "В избранное"
                 const favBtn = e.target.closest('.favorite-btn');
                 if (favBtn) {
                     e.stopPropagation();
@@ -694,7 +847,6 @@
                     return;
                 }
                 
-                // Клик по кнопке "Добавить в корзину"
                 const cartBtn = e.target.closest('.add-to-cart-btn');
                 if (cartBtn) {
                     e.stopPropagation();
@@ -708,7 +860,6 @@
                     return;
                 }
                 
-                // Клик по самой карточке (переход на детальную страницу)
                 const card = e.target.closest('.product-card');
                 if (card) {
                     renderProductDetail(card.dataset.id);
@@ -716,7 +867,6 @@
                 }
             };
 
-            // Привязываем один общий обработчик на контейнеры каталога и избранного
             document.getElementById('productsGrid').addEventListener('click', handleGridClick);
             document.getElementById('favoritesPage').addEventListener('click', handleGridClick);
             
@@ -756,9 +906,7 @@
             
             document.getElementById('logoutBtn').addEventListener('click', async () => { 
                 if(confirm('Выйти из аккаунта?')){ 
-                    cart = []; favorites = []; currentUser.orders = [];
                     await supabaseClient.auth.signOut();
-                    // onAuthStateChange will call onUserLoggedOut()
                 } 
             }); 
             
@@ -787,12 +935,11 @@
                         onUserLoggedOut();
                     }
                 });
-                // Check current session on load
+                
                 supabaseClient.auth.getSession().then(({ data: { session } }) => {
                     if(session && session.user) {
                         onUserLoggedIn(session.user);
                     }
-                    // If no session, overlay stays visible (default)
                 });
             }
         });
@@ -802,7 +949,7 @@
         window.showAuthTab = showAuthTab;
         window.togglePw = togglePw;
         window.handleLogin = handleLogin;
-        window.handleRegister = handleRegister;
+        window.handleRegister = handleRegister;;
     </script>
 </body>
 </html>
