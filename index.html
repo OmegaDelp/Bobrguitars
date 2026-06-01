@@ -173,7 +173,9 @@
 
     <script>
         // Инициализация Supabase клиента (замените на ваши настоящие доступы)
-      
+        const SUPABASE_URL = 'https://qabxmbovewujnxrydnjf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhYnhtYm92ZXd1am54cnlkbmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODYzNTYsImV4cCI6MjA5NTU2MjM1Nn0.3XjKvkjHq7z9hiqaiTs8hHw0caQSdRjMG6UoE251jgU';
+        const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
         let products = [];
         let cart = []; 
@@ -186,13 +188,13 @@
 
         // Новая функция асинхронной загрузки товаров из базы Supabase
         async function fetchProductsFromDB() {
-            if (!supabase) {
+            if (!supabaseClient) {
                 console.error("Supabase не инициализирован. Проверьте ключи.");
                 return;
             }
             try {
                 // Название таблицы в вашей базе Supabase должно быть 'products'
-                const { data, error } = await supabase.from('products').select('*');
+                const { data, error } = await supabaseClient.from('products').select('*');
                 if (error) throw error;
                 
                 // Маппинг snake_case (Supabase) → camelCase (JS)
