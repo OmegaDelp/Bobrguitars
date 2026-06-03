@@ -121,6 +121,68 @@
         .back-to-catalog i { margin-right: 6px; }
         @media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; gap: 24px; } .detail-image { min-height: 260px; font-size: 5rem; } }
 
+        /* ===== ORDER PHONE MODAL ===== */
+        #phoneModal {
+            position: fixed; inset: 0; z-index: 9100;
+            background: rgba(15,20,40,0.75);
+            display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        #phoneModal.visible { display: flex; }
+        .phone-modal-card {
+            background: white; border-radius: 32px; padding: 40px;
+            width: 100%; max-width: 420px; margin: 20px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.4);
+            animation: authSlideUp 0.4s cubic-bezier(0.34,1.56,0.64,1);
+            position: relative; text-align: center;
+        }
+        .phone-modal-card h3 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+        .phone-modal-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
+        .phone-modal-card .auth-field { text-align: left; }
+        .phone-modal-card input[type="tel"] {
+            width: 100%; padding: 14px 16px; border: 1.5px solid var(--gray-border);
+            border-radius: 14px; font-size: 1rem; font-family: inherit;
+            outline: none; background: #fafafa; transition: border-color 0.2s;
+        }
+        .phone-modal-card input[type="tel"]:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(213,80,82,0.1); }
+        .phone-modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+        .phone-modal-actions .checkout-btn { margin-top: 0; }
+        .phone-cancel-btn {
+            flex: 1; padding: 13px; background: var(--gray-light); border: none;
+            border-radius: 16px; font-size: 1rem; font-weight: 600; cursor: pointer;
+            color: var(--text-muted); transition: 0.2s;
+        }
+        .phone-cancel-btn:hover { background: #e0e0e0; }
+
+        /* ===== ORDER SUCCESS BANNER ===== */
+        #orderSuccessBanner {
+            position: fixed; inset: 0; z-index: 9200;
+            background: rgba(15,20,40,0.75);
+            display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        #orderSuccessBanner.visible { display: flex; }
+        .success-card {
+            background: white; border-radius: 32px; padding: 48px 40px;
+            width: 100%; max-width: 440px; margin: 20px; text-align: center;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.4);
+            animation: authSlideUp 0.45s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .success-icon { font-size: 4rem; margin-bottom: 16px; display: block; }
+        .success-card h2 { font-size: 1.7rem; font-weight: 700; margin-bottom: 10px; color: #1e1e2a; }
+        .success-card .success-tagline {
+            font-size: 1.1rem; font-weight: 600; color: var(--primary);
+            background: #fff0f0; border-radius: 16px; padding: 14px 20px;
+            margin: 16px 0 20px; line-height: 1.4;
+        }
+        .success-card .success-details { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 28px; }
+        .success-close-btn {
+            background: var(--primary); color: white; border: none;
+            padding: 14px 40px; border-radius: 40px; font-size: 1rem;
+            font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .success-close-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
         /* ===== AUTH OVERLAY & MODAL ===== */
         #authOverlay {
             position: fixed; inset: 0; z-index: 9000;
@@ -706,14 +768,7 @@
             document.getElementById('orderBtn')?.addEventListener('click',()=>{ 
                 if(!cart.length) return;
                 if(!currentUser.email) { openAuthOverlay('Войдите, чтобы оформить заказ'); return; }
-                currentUser.orders.unshift({ id:Date.now(), date:new Date().toLocaleDateString('ru-RU'), items:[...cart], total, status:'processing' }); 
-                cart=[]; 
-                saveAll(); 
-                updateCartBadge(); 
-                updateMiniCart(); 
-                renderCart(); 
-                renderCatalog(); 
-                showToast('🎉 Заказ оформлен!'); 
+                openPhoneModal();
             }); 
         }
 
@@ -858,6 +913,120 @@
             }
         });
 
+        // ===== PHONE MODAL =====
+        function openPhoneModal() {
+            const phoneInput = document.getElementById('orderPhone');
+            phoneInput.value = '';
+            document.getElementById('phoneError').style.display = 'none';
+            document.getElementById('phoneModal').classList.add('visible');
+            setTimeout(() => phoneInput.focus(), 100);
+        }
+
+        function closePhoneModal() {
+            document.getElementById('phoneModal').classList.remove('visible');
+        }
+
+        // Маска телефона
+        document.addEventListener('DOMContentLoaded', () => {
+            const phoneInput = document.getElementById('orderPhone');
+            if (phoneInput) {
+                phoneInput.addEventListener('input', function(e) {
+                    let v = this.value.replace(/\D/g, '');
+                    if (v.startsWith('8')) v = '7' + v.slice(1);
+                    if (v.startsWith('7') && v.length > 0) {
+                        let f = '+7';
+                        if (v.length > 1) f += ' (' + v.slice(1, 4);
+                        if (v.length >= 4) f += ') ' + v.slice(4, 7);
+                        if (v.length >= 7) f += '-' + v.slice(7, 9);
+                        if (v.length >= 9) f += '-' + v.slice(9, 11);
+                        this.value = f;
+                    }
+                });
+                phoneInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') document.getElementById('phoneConfirmBtn').click();
+                });
+            }
+            document.getElementById('phoneCancelBtn')?.addEventListener('click', closePhoneModal);
+            document.getElementById('phoneConfirmBtn')?.addEventListener('click', handlePhoneConfirm);
+            document.getElementById('successCloseBtn')?.addEventListener('click', () => {
+                document.getElementById('orderSuccessBanner').classList.remove('visible');
+            });
+        });
+
+        async function handlePhoneConfirm() {
+            const phone = document.getElementById('orderPhone').value.trim();
+            const digits = phone.replace(/\D/g, '');
+            const errEl = document.getElementById('phoneError');
+
+            if (!phone || digits.length < 11) {
+                errEl.textContent = 'Введите корректный номер телефона';
+                errEl.style.display = 'block';
+                return;
+            }
+            errEl.style.display = 'none';
+
+            const btn = document.getElementById('phoneConfirmBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="auth-spinner"></span> Оформляем...';
+
+            await placeOrder(phone);
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Подтвердить заказ';
+            closePhoneModal();
+        }
+
+        // ===== PLACE ORDER → SUPABASE =====
+        async function placeOrder(phone) {
+            if (!cart.length) return;
+
+            let total = 0;
+            const orderItems = cart.map(i => {
+                const p = products.find(p => String(p.id) === String(i.productId));
+                const price = p?.oldPrice || p?.price || 0;
+                total += price * i.qty;
+                return { productId: i.productId, title: p?.title, qty: i.qty, price };
+            });
+
+            try {
+                const { error } = await supabaseClient.from('orders').insert({
+                    user_email: currentUser.email,
+                    user_name: currentUser.name,
+                    phone: phone,
+                    items: orderItems,
+                    total: total,
+                    status: 'processing',
+                    created_at: new Date().toISOString()
+                });
+
+                if (error) throw error;
+
+            } catch (err) {
+                console.error('Ошибка сохранения заказа в Supabase:', err.message);
+                // Продолжаем — заказ сохраним локально даже при ошибке БД
+            }
+
+            // Обновляем локальное состояние
+            currentUser.orders = currentUser.orders || [];
+            currentUser.orders.unshift({
+                id: Date.now(),
+                date: new Date().toLocaleDateString('ru-RU'),
+                items: [...orderItems],
+                total,
+                phone,
+                status: 'processing'
+            });
+            cart = [];
+            saveAll();
+            updateCartBadge();
+            updateMiniCart();
+            renderCart();
+            renderCatalog();
+
+            // Показываем баннер успеха
+            document.getElementById('orderSuccessBanner').classList.add('visible');
+        }
+
         window.switchPage = switchPage; 
         window.updateCartQty = updateCartQty;
         window.showAuthTab = showAuthTab;
@@ -866,6 +1035,42 @@
         window.handleRegister = handleRegister;
         window.openAuthOverlay = openAuthOverlay;
         window.closeAuthOverlay = closeAuthOverlay;
+        window.openPhoneModal = openPhoneModal;
+        window.closePhoneModal = closePhoneModal;
     </script>
+    <!-- ===== PHONE MODAL ===== -->
+    <div id="phoneModal">
+        <div class="phone-modal-card">
+            <span style="font-size:2.5rem; display:block; margin-bottom:12px;">📞</span>
+            <h3>Оформление заказа</h3>
+            <p>Укажите номер телефона — мы свяжемся с вами для подтверждения</p>
+            <div class="auth-field">
+                <label style="font-weight:600; font-size:0.85rem; display:block; margin-bottom:6px;">Номер телефона</label>
+                <input type="tel" id="orderPhone" placeholder="+7 (___) ___-__-__" maxlength="18">
+            </div>
+            <div id="phoneError" style="color:#c0392b; font-size:0.82rem; margin-top:8px; display:none;"></div>
+            <div class="phone-modal-actions">
+                <button class="phone-cancel-btn" id="phoneCancelBtn">Отмена</button>
+                <button class="checkout-btn" id="phoneConfirmBtn" style="flex:2; margin-top:0;">
+                    <i class="fas fa-check"></i> Подтвердить заказ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ORDER SUCCESS BANNER ===== -->
+    <div id="orderSuccessBanner">
+        <div class="success-card">
+            <span class="success-icon">🎸</span>
+            <h2>Заказ оформлен!</h2>
+            <div class="success-tagline">⏱ Мы свяжемся с вами<br>в течение 15 минут</div>
+            <p class="success-details">
+                Наш менеджер позвонит на указанный номер<br>
+                для подтверждения деталей заказа
+            </p>
+            <button class="success-close-btn" id="successCloseBtn">Отлично!</button>
+        </div>
+    </div>
+
 </body>
 </html>
