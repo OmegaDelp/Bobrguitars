@@ -725,34 +725,44 @@
             if (favorites.includes(productId)) {
                 // Удаляем из избранного
                 favorites = favorites.filter(id => id !== productId);
+                renderCatalog();
+                if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+                if (document.getElementById('productDetailPage').classList.contains('active-page')) renderProductDetail(productId);
+
                 const { error } = await supabaseClient
                     .from('favorites')
                     .delete()
                     .eq('user_id', currentUser.id)
-                    .eq('product_id', productId);
+                    .eq('product_id', Number(productId));
                 if (error) {
                     console.error('Ошибка удаления из избранного:', error.message);
                     favorites.push(productId); // откатываем
+                    renderCatalog();
+                    if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+                    showToast('❌ Ошибка: ' + error.message);
                 } else {
                     showToast('💔 Удалено из избранного');
                 }
             } else {
                 // Добавляем в избранное
                 favorites.push(productId);
+                renderCatalog();
+                if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+                if (document.getElementById('productDetailPage').classList.contains('active-page')) renderProductDetail(productId);
+
                 const { error } = await supabaseClient
                     .from('favorites')
                     .insert({ user_id: currentUser.id, product_id: Number(productId) });
                 if (error) {
                     console.error('Ошибка добавления в избранное:', error.message);
                     favorites = favorites.filter(id => id !== productId); // откатываем
+                    renderCatalog();
+                    if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+                    showToast('❌ Ошибка: ' + error.message);
                 } else {
                     showToast('❤️ Добавлено в избранное');
                 }
             }
-
-            renderCatalog();
-            if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
-            if (document.getElementById('productDetailPage').classList.contains('active-page')) renderProductDetail(productId);
         }
         
         function renderProductDetail(productId) {
@@ -847,10 +857,10 @@
             if((pageId==='profile') && !currentUser.email) { openAuthOverlay('Войдите, чтобы открыть профиль'); return; }
             document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page')); document.getElementById(`${pageId}Page`).classList.add('active-page'); document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active')); document.querySelector(`.nav-links a[data-nav="${pageId}"]`)?.classList.add('active'); if(pageId==='catalog') renderCatalog(); else if(pageId==='cart') renderCart(); else if(pageId==='favorites') renderFavorites(); else if(pageId==='contacts') renderContacts(); else if(pageId==='profile') renderProfile(); window.scrollTo({top:0,behavior:'smooth'}); }
         
-        function init() { 
+        async function init() { 
             loadData(); 
             
-            fetchProductsFromDB();
+            await fetchProductsFromDB();
             
             // ВАЖНО: Делегирование кликов для сеток товаров (для Каталога и Избранного)
             const handleGridClick = async (e) => {
@@ -945,7 +955,11 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            init();
+            init().then(() => {
+                // После загрузки товаров перерендерим активные страницы
+                if (document.getElementById('cartPage').classList.contains('active-page')) renderCart();
+                if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+            });
 
             // ===== SUPABASE AUTH STATE LISTENER =====
             if(supabaseClient) {
@@ -1042,6 +1056,7 @@
 
             try {
                 const insertData = {
+                    user_id: currentUser.id,
                     user_email: currentUser.email,
                     user_name: currentUser.name,
                     phone: phone,
@@ -1049,7 +1064,6 @@
                     total: Math.round(total),
                     status: 'processing'
                 };
-                if (currentUser.id) insertData.user_id = currentUser.id;
 
                 console.log('Отправка заказа в Supabase:', insertData);
 
@@ -1076,9 +1090,12 @@
 
             } catch (err) {
                 console.error('Ошибка сохранения заказа:', err.message);
-                showToast('⚠️ Заказ оформлен, но не сохранён в БД: ' + err.message);
-                // Всё равно показываем баннер
-            }
+                showToast('❌ Заказ не сохранён в БД: ' + err.message);
+                // Не показываем баннер успеха если заказ не сохранился
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Подтвердить заказ';
+                closePhoneModal();
+                return;
 
             cart = [];
             saveAll();
