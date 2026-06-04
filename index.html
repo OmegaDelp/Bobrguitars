@@ -262,6 +262,20 @@
         }
         .toggle-pw:hover { color: var(--primary); }
         .auth-hint { text-align: center; margin-top: 16px; font-size: 0.8rem; color: var(--text-muted); }
+        .consent-row { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0 6px; }
+        .consent-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); flex-shrink: 0; margin-top: 1px; cursor: pointer; }
+        .consent-row label { font-size: 0.82rem; color: var(--text-muted); cursor: pointer; line-height: 1.4; }
+        .consent-row label a { color: var(--primary); text-decoration: underline; }
+        .consent-row label a:hover { color: var(--primary-dark); }
+        /* Privacy Policy page */
+        .privacy-card { background: white; border-radius: 28px; border: 1px solid var(--gray-border); padding: 36px; box-shadow: var(--shadow); max-width: 860px; }
+        .privacy-card h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+        .privacy-card .privacy-date { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 28px; }
+        .privacy-card h3 { font-size: 1.05rem; font-weight: 700; margin: 24px 0 10px; color: #1e1e2a; }
+        .privacy-card p, .privacy-card li { font-size: 0.92rem; color: #3a3a4a; line-height: 1.7; }
+        .privacy-card ul { padding-left: 20px; margin: 8px 0; }
+        .footer-link { color: var(--primary); text-decoration: underline; cursor: pointer; }
+        .footer-link:hover { color: var(--primary-dark); }
         .auth-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
         @keyframes spin { to { transform: rotate(360deg); } }
         /* Close button for auth modal */
@@ -334,6 +348,10 @@
                         <button class="toggle-pw" type="button" onclick="togglePw('regPassword', this)"><i class="far fa-eye"></i></button>
                     </div>
                 </div>
+                <div class="consent-row">
+                    <input type="checkbox" id="consentCheckbox">
+                    <label for="consentCheckbox">Я согласен(а) с <a href="#" onclick="openPrivacyPage(); return false;">политикой обработки персональных данных</a></label>
+                </div>
                 <button class="auth-submit" id="registerBtn" onclick="handleRegister()">
                     <i class="fas fa-user-plus"></i> Создать аккаунт
                 </button>
@@ -391,6 +409,7 @@
             <div id="contactsPage" class="page"></div>
             <div id="profilePage" class="page"></div>
             <div id="productDetailPage" class="page"></div>
+            <div id="privacyPage" class="page"></div>
         </div>
 
         <aside class="sidebar-right">
@@ -399,7 +418,7 @@
             <div style="margin-top:28px;"><h4><i class="fas fa-gem"></i> Хит продаж</h4><div style="background:var(--gray-light); border-radius:18px; padding:12px; text-align:center;"><div style="font-size:3rem;">🎸</div><strong>Fender Stratocaster</strong><div style="color:var(--primary); font-weight:700;">89 900 ₽</div><small style="color:var(--text-muted);">Продано: 340+ шт.</small></div></div>
         </aside>
     </div>
-    <footer><div class="container"><p>🎸 GuitarShop — магазин гитар и музыкальных инструментов • Доставка по всей России</p><p>© 2026, GuitarShop | Все права защищены</p></div></footer>
+    <footer><div class="container"><p>🎸 GuitarShop — магазин гитар и музыкальных инструментов • Доставка по всей России</p><p>© 2026, GuitarShop | Все права защищены | <a class="footer-link" onclick="openPrivacyPage()">Политика обработки персональных данных</a></p></div></footer>
 
     <script>
         // ===== SUPABASE INIT =====
@@ -497,7 +516,9 @@
             const name = document.getElementById('regName').value.trim();
             const email = document.getElementById('regEmail').value.trim();
             const password = document.getElementById('regPassword').value;
+            const consent = document.getElementById('consentCheckbox').checked;
             if(!name || !email || !password) { showAuthError('registerError', 'Пожалуйста, заполните все поля.'); return; }
+            if(!consent) { showAuthError('registerError', 'Необходимо согласиться с политикой обработки персональных данных.'); return; }
             if(password.length < 6) { showAuthError('registerError', 'Пароль должен быть не менее 6 символов.'); return; }
             setAuthLoading('registerBtn', true, '<i class="fas fa-user-plus"></i> Создать аккаунт');
             try {
@@ -1027,6 +1048,50 @@
             document.getElementById('orderSuccessBanner').classList.add('visible');
         }
 
+        function openPrivacyPage() {
+            closeAuthOverlay(null, true);
+            // Switch all pages off, show privacy page
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+            const pp = document.getElementById('privacyPage');
+            pp.classList.add('active-page');
+            pp.innerHTML = `
+                <div class="privacy-card">
+                    <a class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Назад в каталог</a>
+                    <h2>Политика обработки персональных данных</h2>
+                    <p class="privacy-date">Дата последнего обновления: 01 января 2026 г.</p>
+                    <h3>1. Общие положения</h3>
+                    <p>Настоящая политика конфиденциальности (далее — «Политика») определяет порядок обработки и защиты персональных данных пользователей интернет-магазина GuitarShop (далее — «Оператор»). Оператор обязуется соблюдать конфиденциальность персональных данных в соответствии с Федеральным законом № 152-ФЗ «О персональных данных».</p>
+                    <h3>2. Какие данные мы собираем</h3>
+                    <ul>
+                        <li>Имя и фамилия</li>
+                        <li>Адрес электронной почты</li>
+                        <li>Номер телефона (при оформлении заказа)</li>
+                        <li>История заказов и покупок</li>
+                    </ul>
+                    <h3>3. Цели обработки данных</h3>
+                    <p>Персональные данные используются исключительно для:</p>
+                    <ul>
+                        <li>Создания и управления учётной записью пользователя</li>
+                        <li>Оформления и обработки заказов</li>
+                        <li>Связи с пользователем по вопросам заказов</li>
+                        <li>Улучшения качества обслуживания</li>
+                    </ul>
+                    <h3>4. Хранение и защита данных</h3>
+                    <p>Данные хранятся на защищённых серверах с использованием современного шифрования. Доступ к персональным данным имеют только уполномоченные сотрудники, связанные с обработкой заказов. Данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ.</p>
+                    <h3>5. Права пользователя</h3>
+                    <p>Вы вправе в любое время:</p>
+                    <ul>
+                        <li>Запросить сведения о ваших персональных данных</li>
+                        <li>Потребовать исправления или удаления данных</li>
+                        <li>Отозвать согласие на обработку персональных данных</li>
+                    </ul>
+                    <h3>6. Контакты</h3>
+                    <p>По вопросам обработки персональных данных обращайтесь: <strong>privacy@guitarshop.ru</strong></p>
+                </div>`;
+            window.scrollTo(0, 0);
+        }
+
+        window.openPrivacyPage = openPrivacyPage;
         window.switchPage = switchPage; 
         window.updateCartQty = updateCartQty;
         window.showAuthTab = showAuthTab;
