@@ -262,21 +262,6 @@
         }
         .toggle-pw:hover { color: var(--primary); }
         .auth-hint { text-align: center; margin-top: 16px; font-size: 0.8rem; color: var(--text-muted); }
-        .consent-row { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0 6px; }
-        .consent-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); flex-shrink: 0; margin-top: 1px; cursor: pointer; }
-        .consent-row label { font-size: 0.82rem; color: var(--text-muted); cursor: pointer; line-height: 1.4; }
-        .consent-row label a { color: var(--primary); text-decoration: underline; }
-        .consent-row label a:hover { color: var(--primary-dark); }
-        /* Privacy Policy page */
-        .privacy-card { background: white; border-radius: 28px; border: 1px solid var(--gray-border); padding: 36px; box-shadow: var(--shadow); max-width: 860px; }
-        .privacy-card h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
-        .privacy-card .privacy-date { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 28px; }
-        .privacy-card h3 { font-size: 1.05rem; font-weight: 700; margin: 24px 0 10px; color: #1e1e2a; }
-        .privacy-card p, .privacy-card li { font-size: 0.92rem; color: #3a3a4a; line-height: 1.7; }
-        .privacy-card ul { padding-left: 20px; margin: 8px 0; }
-        .footer-link { color: var(--primary); text-decoration: underline; cursor: pointer; }
-        .footer-link:hover { color: var(--primary-dark); }
-        .product-image.has-img { background: #f5f5f5; position: relative; overflow: hidden; }
         .auth-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
         @keyframes spin { to { transform: rotate(360deg); } }
         /* Close button for auth modal */
@@ -349,10 +334,6 @@
                         <button class="toggle-pw" type="button" onclick="togglePw('regPassword', this)"><i class="far fa-eye"></i></button>
                     </div>
                 </div>
-                <div class="consent-row">
-                    <input type="checkbox" id="consentCheckbox">
-                    <label for="consentCheckbox">Я согласен(а) с <a href="#" onclick="openPrivacyPage(); return false;">политикой обработки персональных данных</a></label>
-                </div>
                 <button class="auth-submit" id="registerBtn" onclick="handleRegister()">
                     <i class="fas fa-user-plus"></i> Создать аккаунт
                 </button>
@@ -363,9 +344,7 @@
 
     <div class="navbar">
         <div class="container nav-inner">
-            <div class="logo">
-                <div id="logoContent"><h1>🎸 GuitarShop <span>| магазин гитар</span></h1></div>
-            </div>
+            <div class="logo"><h1>🎸 GuitarShop <span>| магазин гитар</span></h1></div>
             <div class="nav-links">
                 <a data-nav="catalog" class="active"><i class="fas fa-guitar"></i> Каталог</a>
                 <a data-nav="favorites"><i class="fas fa-heart"></i> Избранное</a>
@@ -412,7 +391,6 @@
             <div id="contactsPage" class="page"></div>
             <div id="profilePage" class="page"></div>
             <div id="productDetailPage" class="page"></div>
-            <div id="privacyPage" class="page"></div>
         </div>
 
         <aside class="sidebar-right">
@@ -421,23 +399,13 @@
             <div style="margin-top:28px;"><h4><i class="fas fa-gem"></i> Хит продаж</h4><div style="background:var(--gray-light); border-radius:18px; padding:12px; text-align:center;"><div style="font-size:3rem;">🎸</div><strong>Fender Stratocaster</strong><div style="color:var(--primary); font-weight:700;">89 900 ₽</div><small style="color:var(--text-muted);">Продано: 340+ шт.</small></div></div>
         </aside>
     </div>
-    <footer><div class="container"><p>🎸 GuitarShop — магазин гитар и музыкальных инструментов • Доставка по всей России</p><p>© 2026, GuitarShop | Все права защищены | <a class="footer-link" onclick="openPrivacyPage()">Политика обработки персональных данных</a></p></div></footer>
+    <footer><div class="container"><p>🎸 GuitarShop — магазин гитар и музыкальных инструментов • Доставка по всей России</p><p>© 2026, GuitarShop | Все права защищены</p></div></footer>
 
     <script>
         // ===== SUPABASE INIT =====
         const SUPABASE_URL = 'https://qabxmbovewujnxrydnjf.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhYnhtYm92ZXd1am54cnlkbmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODYzNTYsImV4cCI6MjA5NTU2MjM1Nn0.3XjKvkjHq7z9hiqaiTs8hHw0caQSdRjMG6UoE251jgU';
         const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-
-        // ===== ЛОГОТИП =====
-        // Чтобы поставить свой логотип — вставьте URL картинки в переменную ниже.
-        // Оставьте пустую строку (''), чтобы показывался текстовый логотип.
-        const LOGO_URL = '';
-
-        if (LOGO_URL) {
-            document.getElementById('logoContent').innerHTML =
-                `<img src="${LOGO_URL}" alt="GuitarShop" style="height:44px; max-width:200px; object-fit:contain;">`;
-        }
 
         // ===== AUTH UI HELPERS =====
         function showAuthTab(tab) {
@@ -529,9 +497,7 @@
             const name = document.getElementById('regName').value.trim();
             const email = document.getElementById('regEmail').value.trim();
             const password = document.getElementById('regPassword').value;
-            const consent = document.getElementById('consentCheckbox').checked;
             if(!name || !email || !password) { showAuthError('registerError', 'Пожалуйста, заполните все поля.'); return; }
-            if(!consent) { showAuthError('registerError', 'Необходимо согласиться с политикой обработки персональных данных.'); return; }
             if(password.length < 6) { showAuthError('registerError', 'Пароль должен быть не менее 6 символов.'); return; }
             setAuthLoading('registerBtn', true, '<i class="fas fa-user-plus"></i> Создать аккаунт');
             try {
@@ -563,36 +529,34 @@
         });
 
         // ===== AUTH STATE HANDLER =====
-        function onUserLoggedIn(user) {
+        async function onUserLoggedIn(user) {
             const name = user.user_metadata?.full_name || user.email.split('@')[0];
             const avatar = name.charAt(0).toUpperCase();
+            currentUser.id = user.id;
             currentUser.name = name;
             currentUser.avatar = avatar;
             currentUser.email = user.email;
             
-            // Загружаем сохраненные данные вошедшего пользователя из localStorage
-            loadData();
+            // Загружаем избранное и заказы из Supabase
+            await loadData();
 
             document.getElementById('headerAvatar').innerText = avatar;
             document.getElementById('headerUserName').innerText = name;
             document.getElementById('navUserBlock').style.display = 'flex';
             document.getElementById('navGuestBlock').style.display = 'none';
             
-            // Закрытие оверлея авторизации
             closeAuthOverlay(null, true);
 
-            // Если открыта страница профиля или корзины, обновляем их отображение
             if (document.getElementById('profilePage').classList.contains('active-page')) renderProfile();
             if (document.getElementById('cartPage').classList.contains('active-page')) renderCart();
+            if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+            renderCatalog();
         }
 
         function onUserLoggedOut() {
-            currentUser = { name: '', avatar: '', email: '', orders: [] };
-            cart = []; 
+            currentUser = { id: null, name: '', avatar: '', email: '', orders: [] };
             favorites = [];
-            
-            // Сбрасываем интерфейс на гостевые/пустые данные
-            loadData();
+            // Корзину не трогаем — она в localStorage и не привязана к пользователю
             
             document.getElementById('navUserBlock').style.display = 'none';
             document.getElementById('navGuestBlock').style.display = 'flex';
@@ -602,12 +566,15 @@
             });
             clearAuthErrors();
             showAuthTab('login');
+            updateCartBadge();
+            updateMiniCart();
+            renderCatalog();
         }
 
         let products = [];
         let cart = []; 
         let favorites = []; 
-        let currentUser = { name: '', avatar: '', email: '', orders: [] }; 
+        let currentUser = { id: null, name: '', avatar: '', email: '', orders: [] }; 
         let currentCategory = 'all'; 
         let currentSort = 'default'; 
         let currentSearch = ''; 
@@ -637,33 +604,61 @@
             }
         }
 
-        // ===== ИСПРАВЛЕННЫЕ ФУНКЦИИ СОХРАНЕНИЯ И ЗАГРУЗКИ =====
-        function loadData() {
-            // 1. Загружаем корзину и избранное
+        // ===== ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ ИЗ SUPABASE =====
+        async function loadData() {
+            // Корзина всегда из localStorage (быстро, не требует авторизации)
             const savedCart = localStorage.getItem('gs_cart');
-            const savedFavorites = localStorage.getItem('gs_favorites');
-            
             cart = savedCart ? JSON.parse(savedCart) : [];
-            favorites = savedFavorites ? JSON.parse(savedFavorites) : [];
 
-            // 2. Загружаем историю заказов, привязанную к email пользователя (или гостя)
-            const orderKey = currentUser.email ? 'gs_orders_' + currentUser.email : 'gs_orders_guest';
-            const savedOrders = localStorage.getItem(orderKey);
-            currentUser.orders = savedOrders ? JSON.parse(savedOrders) : [];
+            if (!currentUser.id) {
+                // Гость — избранное и заказы пустые
+                favorites = [];
+                currentUser.orders = [];
+                updateCartBadge();
+                updateMiniCart();
+                return;
+            }
 
-            // 3. Обновляем элементы интерфейса
-            updateCartBadge(); 
+            try {
+                // Загружаем избранное и заказы параллельно
+                const [favRes, ordersRes] = await Promise.all([
+                    supabaseClient
+                        .from('favorites')
+                        .select('product_id')
+                        .eq('user_id', currentUser.id),
+                    supabaseClient
+                        .from('orders')
+                        .select('*')
+                        .eq('user_id', currentUser.id)
+                        .order('created_at', { ascending: false })
+                ]);
+
+                if (favRes.error) console.error('Ошибка загрузки избранного:', favRes.error.message);
+                if (ordersRes.error) console.error('Ошибка загрузки заказов:', ordersRes.error.message);
+
+                favorites = (favRes.data || []).map(r => String(r.product_id));
+
+                currentUser.orders = (ordersRes.data || []).map(o => ({
+                    id: o.id,
+                    date: new Date(o.created_at).toLocaleDateString('ru-RU'),
+                    items: o.items || [],
+                    total: o.total,
+                    phone: o.phone,
+                    status: o.status || 'processing'
+                }));
+
+                console.log(`Загружено: ${favorites.length} избранных, ${currentUser.orders.length} заказов`);
+            } catch(e) {
+                console.error('loadData error:', e);
+            }
+
+            updateCartBadge();
             updateMiniCart();
         }
 
+        // Корзина по-прежнему в localStorage (не требует входа)
         function saveAll() {
-            // 1. Сохраняем общие данные (корзину и избранное)
             localStorage.setItem('gs_cart', JSON.stringify(cart));
-            localStorage.setItem('gs_favorites', JSON.stringify(favorites));
-
-            // 2. Сохраняем историю заказов текущего пользователя по уникальному ключу
-            const orderKey = currentUser.email ? 'gs_orders_' + currentUser.email : 'gs_orders_guest';
-            localStorage.setItem(orderKey, JSON.stringify(currentUser.orders || []));
         }
 
         function updateCartBadge() { document.getElementById('cartBadge').innerText = cart.reduce((s,i)=>s+i.qty,0); }
@@ -723,21 +718,41 @@
             } 
         }
 
-        function toggleFavorite(productId) { 
+        async function toggleFavorite(productId) { 
+            if (!currentUser.id) { openAuthOverlay('Войдите, чтобы добавить в избранное'); return; }
             productId = String(productId);
-            if(favorites.includes(productId)) { 
-                favorites = favorites.filter(id=>id!==productId); 
-                showToast('💔 Удалено из избранного'); 
-            } else { 
-                favorites.push(productId); 
-                showToast('❤️ Добавлено в избранное'); 
-            } 
-            saveAll(); 
-            renderCatalog(); 
-            if(document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites(); 
-            if(document.getElementById('productDetailPage').classList.contains('active-page')) { 
-                renderProductDetail(productId); 
-            } 
+
+            if (favorites.includes(productId)) {
+                // Удаляем из избранного
+                favorites = favorites.filter(id => id !== productId);
+                const { error } = await supabaseClient
+                    .from('favorites')
+                    .delete()
+                    .eq('user_id', currentUser.id)
+                    .eq('product_id', productId);
+                if (error) {
+                    console.error('Ошибка удаления из избранного:', error.message);
+                    favorites.push(productId); // откатываем
+                } else {
+                    showToast('💔 Удалено из избранного');
+                }
+            } else {
+                // Добавляем в избранное
+                favorites.push(productId);
+                const { error } = await supabaseClient
+                    .from('favorites')
+                    .insert({ user_id: currentUser.id, product_id: Number(productId) });
+                if (error) {
+                    console.error('Ошибка добавления в избранное:', error.message);
+                    favorites = favorites.filter(id => id !== productId); // откатываем
+                } else {
+                    showToast('❤️ Добавлено в избранное');
+                }
+            }
+
+            renderCatalog();
+            if (document.getElementById('favoritesPage').classList.contains('active-page')) renderFavorites();
+            if (document.getElementById('productDetailPage').classList.contains('active-page')) renderProductDetail(productId);
         }
         
         function renderProductDetail(productId) {
@@ -749,13 +764,16 @@
                 for(const [k,v] of Object.entries(product.specs)) specsHtml += `<div class="spec-row"><div class="spec-label">${k}:</div><div class="spec-value">${v}</div></div>`;
             }
             specsHtml += '</div>';
-            const html = `<div class="product-detail-page"><div class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Вернуться к каталогу</div><div class="detail-grid"><div class="detail-image ${product.image_url?'has-img':product.imageClass||''}" style="${product.image_url?'padding:0;overflow:hidden;':''}">${product.image_url?`<img src="${product.image_url}" alt="${product.title}" style="width:100%;height:100%;object-fit:cover;">`:`<span style="font-size:6rem;">${product.emoji||'🎸'}</span>`}${product.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':product.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':''}</div><div class="detail-info"><h2>${product.title}</h2><div class="product-rating">${'★'.repeat(Math.floor(product.rating || 5))}${(product.rating || 5)%1>=0.5?'★':'☆'} ${product.rating || 5} <span>(${product.reviews || 0} отзывов)</span></div><div class="detail-price">${displayPrice.toLocaleString()} ₽${product.oldPrice?`<span class="detail-old-price">${product.oldPrice.toLocaleString()} ₽</span>`:''}</div><div class="detail-description"><strong>Описание:</strong> ${product.description || ''}</div>${specsHtml}<div class="detail-actions"><button class="add-to-cart-btn ${inCart?'in-cart':''}" data-id="${product.id}"><i class="fas ${inCart?'fa-check':'fa-cart-plus'}"></i> ${inCart?'В корзине':'В корзину'}</button><button class="favorite-btn ${inFav?'liked':''}" data-id="${product.id}"><i class="${inFav?'fas':'far'} fa-heart"></i> ${inFav?'В избранном':'В избранное'}</button></div></div></div></div>`;
+            const html = `<div class="product-detail-page"><div class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Вернуться к каталогу</div><div class="detail-grid"><div class="detail-image ${product.imageClass || ''}"><span style="font-size:6rem;">${product.emoji || '🎸'}</span>${product.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':product.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':''}</div><div class="detail-info"><h2>${product.title}</h2><div class="product-rating">${'★'.repeat(Math.floor(product.rating || 5))}${(product.rating || 5)%1>=0.5?'★':'☆'} ${product.rating || 5} <span>(${product.reviews || 0} отзывов)</span></div><div class="detail-price">${displayPrice.toLocaleString()} ₽${product.oldPrice?`<span class="detail-old-price">${product.oldPrice.toLocaleString()} ₽</span>`:''}</div><div class="detail-description"><strong>Описание:</strong> ${product.description || ''}</div>${specsHtml}<div class="detail-actions"><button class="add-to-cart-btn ${inCart?'in-cart':''}" data-id="${product.id}"><i class="fas ${inCart?'fa-check':'fa-cart-plus'}"></i> ${inCart?'В корзине':'В корзину'}</button><button class="favorite-btn ${inFav?'liked':''}" data-id="${product.id}"><i class="${inFav?'fas':'far'} fa-heart"></i> ${inFav?'В избранном':'В избранное'}</button></div></div></div></div>`;
             document.getElementById('productDetailPage').innerHTML = html;
             
             document.getElementById('productDetailPage').querySelector('.add-to-cart-btn')?.addEventListener('click', (e) => { 
                 if (!currentUser.email) { openAuthOverlay('Войдите, чтобы добавить товар в корзину'); return; }
                 const id = e.currentTarget.dataset.id; if(!cart.find(c=>String(c.productId)===String(id))) { addToCart(id); renderProductDetail(id); renderCatalog(); showToast('🛒 Добавлено в корзину!'); } });
-            document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', (e) => { const id = e.currentTarget.dataset.id; toggleFavorite(id); renderProductDetail(id); });
+            document.getElementById('productDetailPage').querySelector('.favorite-btn')?.addEventListener('click', async (e) => { 
+                const id = e.currentTarget.dataset.id; 
+                await toggleFavorite(id); 
+            });
         }
         
         function getFilteredProducts() { 
@@ -777,7 +795,7 @@
             const grid = document.getElementById('productsGrid'); const filtered = getFilteredProducts();
             if(!filtered.length) { grid.innerHTML='<div class="empty-state"><i class="fas fa-search"></i><p>Товары не найдены.</p></div>'; return; }
             let html = ''; filtered.forEach(p=>{ const inFav=favorites.includes(String(p.id)), cartItem=cart.find(c=>String(c.productId)===String(p.id)), displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:'', badgeHtml=p.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':p.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':'';
-                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.image_url?'has-img':p.imageClass||''}">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button>${p.image_url?`<img src="${p.image_url}" alt="${p.title}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:0;">`:`<span style="font-size:4rem;">${p.emoji||'🎸'}</span>`}</div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand || ''}</div><div class="product-title">${p.title}</div><div class="product-rating">${'★'.repeat(Math.floor(p.rating || 5))}${(p.rating || 5)%1>=0.5?'★':'☆'} ${p.rating || 5} <span>(${p.reviews || 0})</span></div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
+                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.imageClass||''}">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button><span style="font-size:4rem;">${p.emoji || '🎸'}</span></div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand || ''}</div><div class="product-title">${p.title}</div><div class="product-rating">${'★'.repeat(Math.floor(p.rating || 5))}${(p.rating || 5)%1>=0.5?'★':'☆'} ${p.rating || 5} <span>(${p.reviews || 0})</span></div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
             }); grid.innerHTML=html;
         }
         
@@ -835,11 +853,11 @@
             fetchProductsFromDB();
             
             // ВАЖНО: Делегирование кликов для сеток товаров (для Каталога и Избранного)
-            const handleGridClick = (e) => {
+            const handleGridClick = async (e) => {
                 const favBtn = e.target.closest('.favorite-btn');
                 if (favBtn) {
                     e.stopPropagation();
-                    toggleFavorite(favBtn.dataset.id);
+                    await toggleFavorite(favBtn.dataset.id);
                     return;
                 }
                 
@@ -1023,33 +1041,45 @@
             });
 
             try {
-                const { error } = await supabaseClient.from('orders').insert({
+                const insertData = {
                     user_email: currentUser.email,
                     user_name: currentUser.name,
                     phone: phone,
                     items: orderItems,
-                    total: total,
-                    status: 'processing',
-                    created_at: new Date().toISOString()
-                });
+                    total: Math.round(total),
+                    status: 'processing'
+                };
+                if (currentUser.id) insertData.user_id = currentUser.id;
+
+                console.log('Отправка заказа в Supabase:', insertData);
+
+                const { data, error } = await supabaseClient
+                    .from('orders')
+                    .insert(insertData)
+                    .select()
+                    .single();
 
                 if (error) throw error;
 
+                console.log('Заказ сохранён:', data);
+
+                // Добавляем в локальный список заказов
+                currentUser.orders = currentUser.orders || [];
+                currentUser.orders.unshift({
+                    id: data.id,
+                    date: new Date(data.created_at).toLocaleDateString('ru-RU'),
+                    items: orderItems,
+                    total: Math.round(total),
+                    phone,
+                    status: 'processing'
+                });
+
             } catch (err) {
-                console.error('Ошибка сохранения заказа в Supabase:', err.message);
-                // Продолжаем — заказ сохраним локально даже при ошибке БД
+                console.error('Ошибка сохранения заказа:', err.message);
+                showToast('⚠️ Заказ оформлен, но не сохранён в БД: ' + err.message);
+                // Всё равно показываем баннер
             }
 
-            // Обновляем локальное состояние
-            currentUser.orders = currentUser.orders || [];
-            currentUser.orders.unshift({
-                id: Date.now(),
-                date: new Date().toLocaleDateString('ru-RU'),
-                items: [...orderItems],
-                total,
-                phone,
-                status: 'processing'
-            });
             cart = [];
             saveAll();
             updateCartBadge();
@@ -1057,54 +1087,9 @@
             renderCart();
             renderCatalog();
 
-            // Показываем баннер успеха
             document.getElementById('orderSuccessBanner').classList.add('visible');
         }
 
-        function openPrivacyPage() {
-            closeAuthOverlay(null, true);
-            // Switch all pages off, show privacy page
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-            const pp = document.getElementById('privacyPage');
-            pp.classList.add('active-page');
-            pp.innerHTML = `
-                <div class="privacy-card">
-                    <a class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Назад в каталог</a>
-                    <h2>Политика обработки персональных данных</h2>
-                    <p class="privacy-date">Дата последнего обновления: 01 января 2026 г.</p>
-                    <h3>1. Общие положения</h3>
-                    <p>Настоящая политика конфиденциальности (далее — «Политика») определяет порядок обработки и защиты персональных данных пользователей интернет-магазина GuitarShop (далее — «Оператор»). Оператор обязуется соблюдать конфиденциальность персональных данных в соответствии с Федеральным законом № 152-ФЗ «О персональных данных».</p>
-                    <h3>2. Какие данные мы собираем</h3>
-                    <ul>
-                        <li>Имя и фамилия</li>
-                        <li>Адрес электронной почты</li>
-                        <li>Номер телефона (при оформлении заказа)</li>
-                        <li>История заказов и покупок</li>
-                    </ul>
-                    <h3>3. Цели обработки данных</h3>
-                    <p>Персональные данные используются исключительно для:</p>
-                    <ul>
-                        <li>Создания и управления учётной записью пользователя</li>
-                        <li>Оформления и обработки заказов</li>
-                        <li>Связи с пользователем по вопросам заказов</li>
-                        <li>Улучшения качества обслуживания</li>
-                    </ul>
-                    <h3>4. Хранение и защита данных</h3>
-                    <p>Данные хранятся на защищённых серверах с использованием современного шифрования. Доступ к персональным данным имеют только уполномоченные сотрудники, связанные с обработкой заказов. Данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ.</p>
-                    <h3>5. Права пользователя</h3>
-                    <p>Вы вправе в любое время:</p>
-                    <ul>
-                        <li>Запросить сведения о ваших персональных данных</li>
-                        <li>Потребовать исправления или удаления данных</li>
-                        <li>Отозвать согласие на обработку персональных данных</li>
-                    </ul>
-                    <h3>6. Контакты</h3>
-                    <p>По вопросам обработки персональных данных обращайтесь: <strong>privacy@guitarshop.ru</strong></p>
-                </div>`;
-            window.scrollTo(0, 0);
-        }
-
-        window.openPrivacyPage = openPrivacyPage;
         window.switchPage = switchPage; 
         window.updateCartQty = updateCartQty;
         window.showAuthTab = showAuthTab;
