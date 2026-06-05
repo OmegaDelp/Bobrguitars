@@ -1003,6 +1003,7 @@
 
                 showToast('✅ Отзыв опубликован!');
                 document.getElementById('reviewComment').value = '';
+                const submittedRating = selectedRating;
                 selectedRating = 0;
                 document.querySelectorAll('#starPicker [data-star]').forEach(s => s.classList.remove('active'));
                 btn.disabled = false;
@@ -1011,7 +1012,7 @@
                 // Обновляем reviewsMap чтобы каталог показывал актуальный рейтинг
                 const id = String(productId);
                 if (!reviewsMap[id]) reviewsMap[id] = { sum: 0, count: 0 };
-                reviewsMap[id].sum += selectedRating;
+                reviewsMap[id].sum += submittedRating;
                 reviewsMap[id].count += 1;
 
                 // Обновляем список отзывов
