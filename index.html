@@ -165,15 +165,7 @@
             cursor: pointer; font-family: 'Inter', sans-serif;
         }
 
-        /* ===== MOBILE FILTER FAB ===== */
-        .mobile-filter-fab {
-            display: none; position: fixed; bottom: 80px; right: 20px; z-index: 190;
-            background: var(--primary); color: white; border: none;
-            width: 52px; height: 52px; border-radius: 50%; font-size: 1.1rem;
-            box-shadow: 0 4px 20px rgba(213,80,82,0.45); cursor: pointer;
-            align-items: center; justify-content: center; transition: 0.2s;
-        }
-        .mobile-filter-fab:hover { transform: scale(1.05); }
+
 
         /* ===== MOBILE STYLES ===== */
         @media (max-width: 768px) {
@@ -181,7 +173,6 @@
             .nav-links { display: none; }
             #navUserBlock, #navGuestBlock { display: none !important; }
             .mobile-bottom-nav { display: flex; }
-            .mobile-filter-fab { display: flex; }
 
             /* Navbar compact */
             .nav-inner { padding: 10px 0; gap: 8px; flex-wrap: nowrap; }
@@ -1663,11 +1654,6 @@
         </div>
     </nav>
 
-    <!-- ===== MOBILE FILTER FAB ===== -->
-    <button class="mobile-filter-fab" id="mobileFilterFab" onclick="openMobileFilter()" title="Фильтры">
-        <i class="fas fa-sliders-h"></i>
-    </button>
-
     <!-- ===== MOBILE FILTER DRAWER ===== -->
     <div class="mobile-filter-overlay" id="mobileFilterOverlay" onclick="closeMobileFilter()"></div>
     <div class="mobile-filter-drawer" id="mobileFilterDrawer">
@@ -1724,8 +1710,7 @@
             document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
             const activeBtn = document.querySelector(`.mobile-nav-item[data-nav="${page}"]`);
             if (activeBtn) activeBtn.classList.add('active');
-            const fab = document.getElementById('mobileFilterFab');
-            if (fab) fab.style.display = (page === 'catalog') ? 'flex' : 'none';
+
         }
         const _origSP = window.switchPage;
         window.switchPage = function(page) { if (_origSP) _origSP(page); syncMobileNav(page); };
