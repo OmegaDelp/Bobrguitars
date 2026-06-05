@@ -97,8 +97,157 @@
         .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
         .empty-state i { font-size: 3rem; margin-bottom: 16px; display: block; }
         footer { text-align: center; padding: 32px 0; border-top: 1px solid var(--gray-border); margin-top: 20px; color: var(--text-muted); }
-        @media (max-width: 1100px) { .main-grid { grid-template-columns: 1fr; gap: 24px; margin: 24px 0; } .sidebar-left, .sidebar-right { position: static; } .container { padding: 0 20px; } }
-        @media (max-width: 640px) { .container { padding: 0 16px; } .nav-inner { flex-direction: column; align-items: stretch; } .nav-links { justify-content: center; } .products-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); } }
+        /* ===== TABLET ===== */
+        @media (max-width: 1100px) {
+            .main-grid { grid-template-columns: 1fr; gap: 24px; margin: 24px 0; }
+            .sidebar-left, .sidebar-right { position: static; }
+            .container { padding: 0 20px; }
+        }
+
+        /* ===== MOBILE BOTTOM NAV ===== */
+        .mobile-bottom-nav {
+            display: none;
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+            background: white; border-top: 1px solid var(--gray-border);
+            padding: 8px 0 env(safe-area-inset-bottom, 8px);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+        }
+        .mobile-bottom-nav-inner {
+            display: flex; align-items: center; justify-content: space-around;
+        }
+        .mobile-nav-item {
+            display: flex; flex-direction: column; align-items: center; gap: 3px;
+            padding: 6px 12px; cursor: pointer; border: none; background: none;
+            color: var(--text-muted); font-size: 0.65rem; font-weight: 500;
+            font-family: 'Inter', sans-serif; transition: color 0.2s; position: relative;
+            flex: 1;
+        }
+        .mobile-nav-item i { font-size: 1.2rem; }
+        .mobile-nav-item.active { color: var(--primary); }
+        .mobile-nav-item .cart-badge {
+            position: absolute; top: 2px; left: 50%; margin-left: 4px;
+            background: var(--primary); color: white; border-radius: 50%;
+            width: 18px; height: 18px; font-size: 0.6rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; border: 2px solid white;
+        }
+
+        /* ===== MOBILE FILTER DRAWER ===== */
+        .mobile-filter-overlay {
+            display: none; position: fixed; inset: 0; z-index: 500;
+            background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+        }
+        .mobile-filter-overlay.open { display: block; }
+        .mobile-filter-drawer {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 501;
+            background: white; border-radius: 28px 28px 0 0;
+            padding: 20px 20px 32px; max-height: 85vh; overflow-y: auto;
+            transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.34,1.3,0.64,1);
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.15);
+        }
+        .mobile-filter-drawer.open { transform: translateY(0); }
+        .drawer-handle { width: 40px; height: 4px; background: #ddd; border-radius: 4px; margin: 0 auto 20px; }
+        .drawer-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 18px; }
+        .drawer-menu-item {
+            display: flex; align-items: center; gap: 14px; padding: 13px 16px;
+            border-radius: 14px; font-weight: 500; cursor: pointer; transition: 0.2s;
+            margin-bottom: 6px; color: #1F1F2B; border: none; background: none;
+            width: 100%; font-family: 'Inter', sans-serif; font-size: 0.95rem;
+        }
+        .drawer-menu-item i { width: 24px; color: var(--text-muted); }
+        .drawer-menu-item.active, .drawer-menu-item:hover { background: var(--gray-light); color: var(--primary); }
+        .drawer-menu-item.active i, .drawer-menu-item:hover i { color: var(--primary); }
+        .drawer-price-section { margin-top: 12px; padding: 16px; background: var(--gray-light); border-radius: 18px; }
+        .drawer-price-section h4 { margin-bottom: 10px; font-size: 0.9rem; color: var(--text-muted); }
+        .drawer-price-section input[type="range"] { width: 100%; accent-color: var(--primary); }
+        .drawer-close-btn {
+            width: 100%; margin-top: 16px; padding: 14px; background: var(--primary);
+            color: white; border: none; border-radius: 16px; font-size: 1rem; font-weight: 700;
+            cursor: pointer; font-family: 'Inter', sans-serif;
+        }
+
+        /* ===== MOBILE FILTER FAB ===== */
+        .mobile-filter-fab {
+            display: none; position: fixed; bottom: 80px; right: 20px; z-index: 190;
+            background: var(--primary); color: white; border: none;
+            width: 52px; height: 52px; border-radius: 50%; font-size: 1.1rem;
+            box-shadow: 0 4px 20px rgba(213,80,82,0.45); cursor: pointer;
+            align-items: center; justify-content: center; transition: 0.2s;
+        }
+        .mobile-filter-fab:hover { transform: scale(1.05); }
+
+        /* ===== MOBILE STYLES ===== */
+        @media (max-width: 768px) {
+            /* Hide desktop nav links, show mobile bottom nav */
+            .nav-links { display: none; }
+            #navUserBlock, #navGuestBlock { display: none !important; }
+            .mobile-bottom-nav { display: flex; }
+            .mobile-filter-fab { display: flex; }
+
+            /* Navbar compact */
+            .nav-inner { padding: 10px 0; gap: 8px; flex-wrap: nowrap; }
+            .logo h1 { font-size: 1.3rem; }
+            .logo span { display: none; }
+
+            /* Hide desktop sidebars */
+            .sidebar-left, .sidebar-right { display: none; }
+
+            /* Main grid single column */
+            .main-grid { grid-template-columns: 1fr; gap: 0; margin: 16px 0; }
+            .container { padding: 0 14px; }
+
+            /* Products grid 2 cols on mobile */
+            .products-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .favorites-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+            /* Product cards compact */
+            .product-image { height: 150px; font-size: 3rem; }
+            .product-info { padding: 12px; }
+            .product-title { font-size: 0.88rem; }
+            .product-price { font-size: 1rem; }
+            .add-to-cart-btn { width: 34px; height: 34px; font-size: 0.9rem; }
+
+            /* Search bar full width */
+            #searchInput { min-width: 0; font-size: 0.9rem; }
+            #sortSelect { font-size: 0.85rem; padding: 8px 12px; }
+
+            /* Cart page */
+            .cart-page-container { padding: 18px; border-radius: 20px; }
+            .cart-item-row { gap: 10px; flex-wrap: nowrap; }
+            .cart-item-image { width: 56px; height: 56px; font-size: 1.5rem; }
+
+            /* Product detail */
+            .product-detail-page { padding: 18px; border-radius: 20px; }
+            .detail-grid { grid-template-columns: 1fr; gap: 16px; }
+            .detail-image { min-height: 220px; font-size: 5rem; }
+            .detail-info h2 { font-size: 1.4rem; }
+            .detail-price { font-size: 1.5rem; margin: 12px 0; }
+
+            /* Contacts */
+            .contacts-card { padding: 18px; border-radius: 20px; }
+
+            /* Profile */
+            .profile-card { padding: 20px; border-radius: 20px; }
+
+            /* Privacy */
+            .privacy-card { padding: 18px; border-radius: 20px; }
+
+            /* Bottom padding so content isn't behind bottom nav */
+            .main-grid, footer { padding-bottom: 70px; }
+            footer { margin-bottom: 0; }
+
+            /* Phone modal full width on mobile */
+            .phone-modal-card { padding: 28px 20px; border-radius: 24px; }
+            .auth-card { padding: 28px 20px; border-radius: 24px; margin: 12px; }
+
+            /* Toast above bottom nav */
+            .toast { bottom: 80px; }
+        }
+
+        @media (max-width: 400px) {
+            .products-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .product-image { height: 130px; font-size: 2.5rem; }
+            .logo h1 { font-size: 1.15rem; }
+        }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1f1f2b; color: white; padding: 12px 24px; border-radius: 48px; z-index: 999; font-size: 0.9rem; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
         .favorites-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
         /* Стили страницы товара */
@@ -1487,6 +1636,107 @@
         window.openPhoneModal = openPhoneModal;
         window.closePhoneModal = closePhoneModal;
     </script>
+    <!-- ===== MOBILE BOTTOM NAV ===== -->
+    <nav class="mobile-bottom-nav">
+        <div class="mobile-bottom-nav-inner">
+            <button class="mobile-nav-item active" data-nav="catalog" onclick="switchPage('catalog')">
+                <i class="fas fa-guitar"></i>
+                <span>Каталог</span>
+            </button>
+            <button class="mobile-nav-item" data-nav="favorites" onclick="switchPage('favorites')">
+                <i class="fas fa-heart"></i>
+                <span>Избранное</span>
+            </button>
+            <button class="mobile-nav-item" data-nav="cart" onclick="switchPage('cart')" id="mobileCartBtn">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-badge" id="mobileCartBadge" style="display:none">0</span>
+                <span>Корзина</span>
+            </button>
+            <button class="mobile-nav-item" data-nav="contacts" onclick="switchPage('contacts')">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Контакты</span>
+            </button>
+            <button class="mobile-nav-item" data-nav="profile" onclick="switchPage('profile')">
+                <i class="fas fa-user"></i>
+                <span>Профиль</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ===== MOBILE FILTER FAB ===== -->
+    <button class="mobile-filter-fab" id="mobileFilterFab" onclick="openMobileFilter()" title="Фильтры">
+        <i class="fas fa-sliders-h"></i>
+    </button>
+
+    <!-- ===== MOBILE FILTER DRAWER ===== -->
+    <div class="mobile-filter-overlay" id="mobileFilterOverlay" onclick="closeMobileFilter()"></div>
+    <div class="mobile-filter-drawer" id="mobileFilterDrawer">
+        <div class="drawer-handle"></div>
+        <div class="drawer-title">🎸 Категории и фильтры</div>
+        <button class="drawer-menu-item active" data-category="all" onclick="mobileSelectCategory('all')"><i class="fas fa-th-large"></i> Все товары</button>
+        <button class="drawer-menu-item" data-category="acoustic" onclick="mobileSelectCategory('acoustic')"><i class="fas fa-guitar"></i> Акустические гитары</button>
+        <button class="drawer-menu-item" data-category="electric" onclick="mobileSelectCategory('electric')"><i class="fas fa-bolt"></i> Электрогитары</button>
+        <button class="drawer-menu-item" data-category="bass" onclick="mobileSelectCategory('bass')"><i class="fas fa-music"></i> Бас-гитары</button>
+        <button class="drawer-menu-item" data-category="ukulele" onclick="mobileSelectCategory('ukulele')"><i class="fas fa-leaf"></i> Укулеле</button>
+        <button class="drawer-menu-item" data-category="accessory" onclick="mobileSelectCategory('accessory')"><i class="fas fa-toolbox"></i> Аксессуары</button>
+        <div class="drawer-price-section">
+            <h4>💰 Цена (макс.)</h4>
+            <input type="range" id="mobilePriceRange" min="1000" max="300000" value="300000" step="1000" oninput="syncPriceFromMobile(this.value)">
+            <div class="price-values"><span>1 000 ₽</span><span id="mobilePriceMaxLabel">300 000 ₽</span></div>
+        </div>
+        <button class="drawer-close-btn" onclick="closeMobileFilter()">Применить фильтры</button>
+    </div>
+
+    <script>
+        function openMobileFilter() {
+            document.getElementById('mobileFilterOverlay').classList.add('open');
+            document.getElementById('mobileFilterDrawer').classList.add('open');
+        }
+        function closeMobileFilter() {
+            document.getElementById('mobileFilterOverlay').classList.remove('open');
+            document.getElementById('mobileFilterDrawer').classList.remove('open');
+        }
+        function mobileSelectCategory(cat) {
+            document.querySelectorAll('.drawer-menu-item').forEach(el => el.classList.remove('active'));
+            const drawerItem = document.querySelector(`.drawer-menu-item[data-category="${cat}"]`);
+            if (drawerItem) drawerItem.classList.add('active');
+            document.querySelectorAll('.menu-item[data-category]').forEach(el => el.classList.remove('active'));
+            const desktopItem = document.querySelector(`.menu-item[data-category="${cat}"]`);
+            if (desktopItem) desktopItem.classList.add('active');
+            currentCategory = cat;
+            renderCatalog();
+        }
+        function syncPriceFromMobile(val) {
+            maxPrice = parseInt(val);
+            document.getElementById('mobilePriceMaxLabel').textContent = parseInt(val).toLocaleString('ru-RU') + ' ₽';
+            const dr = document.getElementById('priceRange');
+            if (dr) { dr.value = val; document.getElementById('priceMaxLabel').textContent = parseInt(val).toLocaleString('ru-RU') + ' ₽'; }
+            renderCatalog();
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const dr = document.getElementById('priceRange');
+            if (dr) dr.addEventListener('input', function() {
+                const mr = document.getElementById('mobilePriceRange');
+                if (mr) { mr.value = this.value; document.getElementById('mobilePriceMaxLabel').textContent = parseInt(this.value).toLocaleString('ru-RU') + ' ₽'; }
+            });
+        });
+        function syncMobileNav(page) {
+            document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+            const activeBtn = document.querySelector(`.mobile-nav-item[data-nav="${page}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+            const fab = document.getElementById('mobileFilterFab');
+            if (fab) fab.style.display = (page === 'catalog') ? 'flex' : 'none';
+        }
+        const _origSP = window.switchPage;
+        window.switchPage = function(page) { if (_origSP) _origSP(page); syncMobileNav(page); };
+        window.updateCartBadge = (function(orig) { return function() {
+            if (orig) orig.call(this);
+            const total = (window.cart || []).reduce((s,i) => s + i.qty, 0);
+            const badge = document.getElementById('mobileCartBadge');
+            if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'flex' : 'none'; }
+        }; })(window.updateCartBadge);
+    <\/script>
+
     <!-- ===== PHONE MODAL ===== -->
     <div id="phoneModal">
         <div class="phone-modal-card">
