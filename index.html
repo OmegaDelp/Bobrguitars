@@ -985,6 +985,22 @@
                 btn.disabled = true;
                 btn.innerHTML = '<span class="auth-spinner"></span> Отправляем...';
 
+                // Проверяем нет ли уже отзыва от этого пользователя
+                const { data: existing } = await supabaseClient
+                    .from('reviews')
+                    .select('id')
+                    .eq('product_id', Number(productId))
+                    .eq('user_id', currentUser.id)
+                    .maybeSingle();
+
+                if (existing) {
+                    showToast('❌ Вы уже оставили отзыв на этот товар');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Отправить отзыв';
+                    await loadAndRenderReviews(productId);
+                    return;
+                }
+
                 const { data, error } = await supabaseClient.from('reviews').insert({
                     product_id: Number(productId),
                     user_id: currentUser.id,
@@ -1053,6 +1069,13 @@
             const stars = '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
             const ratingEl = document.getElementById('detailRating');
             if (ratingEl) ratingEl.innerHTML = `<span style="color:#f59e0b">${stars}</span> ${avg} <span id="detailReviewCount">(${data.length} отзывов)</span>`;
+
+            // Скрываем форму если пользователь уже оставил отзыв
+            const alreadyReviewed = currentUser.id && data.some(r => r.user_id === currentUser.id);
+            const formCard = document.querySelector('.review-form-card');
+            if (formCard && alreadyReviewed) {
+                formCard.innerHTML = `<div style="text-align:center; padding:12px 0; color:var(--text-muted); font-size:0.9rem;">✅ Вы уже оставили отзыв на этот товар</div>`;
+            }
 
             container.innerHTML = data.map(r => {
                 const date = new Date(r.created_at).toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric' });
