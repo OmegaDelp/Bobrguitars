@@ -629,6 +629,7 @@
         let products = [];
         let cart = []; 
         let favorites = []; 
+        let reviewsMap = {}; // { productId: { avg, count } }
         let currentUser = { id: null, name: '', avatar: '', email: '', orders: [] }; 
         let currentCategory = 'all'; 
         let currentSort = 'default'; 
@@ -641,14 +642,29 @@
                 return;
             }
             try {
-                const { data, error } = await supabaseClient.from('products').select('*');
-                if (error) throw error;
-                
-                products = (data || []).map(p => ({
+                // Загружаем товары и все отзывы параллельно
+                const [productsRes, reviewsRes] = await Promise.all([
+                    supabaseClient.from('products').select('*'),
+                    supabaseClient.from('reviews').select('product_id, rating')
+                ]);
+
+                if (productsRes.error) throw productsRes.error;
+
+                products = (productsRes.data || []).map(p => ({
                     ...p,
                     oldPrice: p.old_price,
                     imageClass: p.image_class,
                 }));
+
+                // Считаем средний рейтинг по каждому товару
+                reviewsMap = {};
+                (reviewsRes.data || []).forEach(r => {
+                    const id = String(r.product_id);
+                    if (!reviewsMap[id]) reviewsMap[id] = { sum: 0, count: 0 };
+                    reviewsMap[id].sum += r.rating;
+                    reviewsMap[id].count += 1;
+                });
+
                 renderCatalog(); 
                 updateMiniCart();
                 if(document.getElementById('cartPage').classList.contains('active-page')) renderCart();
@@ -955,6 +971,12 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-paper-plane"></i> Отправить отзыв';
 
+                // Обновляем reviewsMap чтобы каталог показывал актуальный рейтинг
+                const id = String(productId);
+                if (!reviewsMap[id]) reviewsMap[id] = { sum: 0, count: 0 };
+                reviewsMap[id].sum += selectedRating;
+                reviewsMap[id].count += 1;
+
                 // Обновляем список отзывов
                 await loadAndRenderReviews(productId);
             });
@@ -988,7 +1010,9 @@
 
             // Обновляем средний рейтинг в шапке
             const avg = (data.reduce((s,r) => s + r.rating, 0) / data.length).toFixed(1);
-            const stars = '★'.repeat(Math.floor(avg)) + ((avg % 1) >= 0.5 ? '★' : '☆');
+            const avgNum = parseFloat(avg);
+            const fullStars = Math.round(avgNum);
+            const stars = '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
             const ratingEl = document.getElementById('detailRating');
             if (ratingEl) ratingEl.innerHTML = `<span style="color:#f59e0b">${stars}</span> ${avg} <span id="detailReviewCount">(${data.length} отзывов)</span>`;
 
@@ -1028,8 +1052,13 @@
         function renderCatalog() {
             const grid = document.getElementById('productsGrid'); const filtered = getFilteredProducts();
             if(!filtered.length) { grid.innerHTML='<div class="empty-state"><i class="fas fa-search"></i><p>Товары не найдены.</p></div>'; return; }
-            let html = ''; filtered.forEach(p=>{ const inFav=favorites.includes(String(p.id)), cartItem=cart.find(c=>String(c.productId)===String(p.id)), displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:'', badgeHtml=p.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':p.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':'';
-                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.imageClass||''}">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button><span style="font-size:4rem;">${p.emoji || '🎸'}</span></div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand || ''}</div><div class="product-title">${p.title}</div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
+            let html = ''; filtered.forEach(p=>{ 
+                const inFav=favorites.includes(String(p.id)), cartItem=cart.find(c=>String(c.productId)===String(p.id)), displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:'', badgeHtml=p.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':p.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':'';
+                const rv = reviewsMap[String(p.id)];
+                const ratingHtml = rv && rv.count > 0
+                    ? `<div class="product-rating"><span style="color:#f59e0b">${'★'.repeat(Math.round(rv.sum/rv.count))}${'☆'.repeat(5-Math.round(rv.sum/rv.count))}</span> <span>${(rv.sum/rv.count).toFixed(1)}</span> <span>(${rv.count})</span></div>`
+                    : `<div class="product-rating" style="color:var(--text-muted); font-size:0.78rem;">Нет отзывов</div>`;
+                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.imageClass||''}">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button><span style="font-size:4rem;">${p.emoji || '🎸'}</span></div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand || ''}</div><div class="product-title">${p.title}</div>${ratingHtml}<div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
             }); grid.innerHTML=html;
         }
         
