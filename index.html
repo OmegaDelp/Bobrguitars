@@ -335,6 +335,23 @@
             background: var(--primary); color: white; border: none; padding: 7px 18px;
             border-radius: 20px; font-weight: 600; cursor: pointer; margin-left: 10px; font-size: 0.85rem;
         }
+        /* ===== IMAGE SUPPORT ===== */
+        .product-image.has-img { background: #f5f5f5; position: relative; overflow: hidden; }
+        /* ===== CONSENT CHECKBOX ===== */
+        .consent-row { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0 6px; }
+        .consent-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); flex-shrink: 0; margin-top: 1px; cursor: pointer; }
+        .consent-row label { font-size: 0.82rem; color: var(--text-muted); cursor: pointer; line-height: 1.4; }
+        .consent-row label a { color: var(--primary); text-decoration: underline; }
+        .consent-row label a:hover { color: var(--primary-dark); }
+        /* ===== PRIVACY POLICY PAGE ===== */
+        .privacy-card { background: white; border-radius: 28px; border: 1px solid var(--gray-border); padding: 36px; box-shadow: var(--shadow); max-width: 860px; }
+        .privacy-card h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+        .privacy-card .privacy-date { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 28px; }
+        .privacy-card h3 { font-size: 1.05rem; font-weight: 700; margin: 24px 0 10px; color: #1e1e2a; }
+        .privacy-card p, .privacy-card li { font-size: 0.92rem; color: #3a3a4a; line-height: 1.7; }
+        .privacy-card ul { padding-left: 20px; margin: 8px 0; }
+        .footer-link { color: var(--primary); text-decoration: underline; cursor: pointer; }
+        .footer-link:hover { color: var(--primary-dark); }
     </style>
 </head>
 <body>
@@ -392,6 +409,10 @@
                 <button class="auth-submit" id="registerBtn" onclick="handleRegister()">
                     <i class="fas fa-user-plus"></i> Создать аккаунт
                 </button>
+                <div class="consent-row">
+                    <input type="checkbox" id="consentCheckbox">
+                    <label for="consentCheckbox">Я согласен(а) с <a href="#" onclick="openPrivacyPage(); return false;">политикой обработки персональных данных</a></label>
+                </div>
                 <div class="auth-hint">Уже есть аккаунт? <a href="#" style="color:var(--primary); font-weight:600;" onclick="showAuthTab('login'); return false;">Войти</a></div>
             </div>
         </div>
@@ -399,7 +420,9 @@
 
     <div class="navbar">
         <div class="container nav-inner">
-            <div class="logo"><h1>🎸 GuitarShop <span>| магазин гитар</span></h1></div>
+            <div class="logo">
+                <div id="logoContent"><h1>🎸 GuitarShop <span>| магазин гитар</span></h1></div>
+            </div>
             <div class="nav-links">
                 <a data-nav="catalog" class="active"><i class="fas fa-guitar"></i> Каталог</a>
                 <a data-nav="favorites"><i class="fas fa-heart"></i> Избранное</a>
@@ -446,7 +469,7 @@
             <div id="contactsPage" class="page"></div>
             <div id="profilePage" class="page"></div>
             <div id="productDetailPage" class="page"></div>
-        </div>
+            <div id="privacyPage" class="page"></div>
 
         <aside class="sidebar-right">
             <div class="mini-cart" id="miniCart"><h4>🛒 Мини-корзина</h4><div id="miniCartItems"><p style="font-size:0.85rem; color:var(--text-muted);">Пока пусто</p></div><div class="mini-cart-total" id="miniCartTotal">Итого: 0 ₽</div><button class="checkout-btn" id="miniCheckoutBtn"><i class="fas fa-credit-card"></i> Оформить</button></div>
@@ -454,13 +477,24 @@
             <div style="margin-top:28px;"><h4><i class="fas fa-gem"></i> Хит продаж</h4><div style="background:var(--gray-light); border-radius:18px; padding:12px; text-align:center;"><div style="font-size:3rem;">🎸</div><strong>Fender Stratocaster</strong><div style="color:var(--primary); font-weight:700;">89 900 ₽</div><small style="color:var(--text-muted);">Продано: 340+ шт.</small></div></div>
         </aside>
     </div>
-    <footer><div class="container"><p>🎸 GuitarShop — магазин гитар и музыкальных инструментов • Доставка по всей России</p><p>© 2026, GuitarShop | Все права защищены</p></div></footer>
+    <footer><div class="container"><p>🎸 GuitarShop — магазин гитар и музыкальных инструментов • Доставка по всей России</p><p>© 2026, GuitarShop | Все права защищены | <a class="footer-link" onclick="openPrivacyPage()">Политика обработки персональных данных</a></p></div></footer>
 
     <script>
         // ===== SUPABASE INIT =====
         const SUPABASE_URL = 'https://qabxmbovewujnxrydnjf.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhYnhtYm92ZXd1am54cnlkbmpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODYzNTYsImV4cCI6MjA5NTU2MjM1Nn0.3XjKvkjHq7z9hiqaiTs8hHw0caQSdRjMG6UoE251jgU';
         const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+        // ===== ЛОГОТИП =====
+        // Чтобы поставить свой логотип — вставьте URL картинки в переменную ниже.
+        // Оставьте пустую строку (''), чтобы показывался текстовый логотип.
+        const LOGO_URL = '';
+        if (LOGO_URL) {
+            document.addEventListener('DOMContentLoaded', () => {
+                const lc = document.getElementById('logoContent');
+                if (lc) lc.innerHTML = `<img src="${LOGO_URL}" alt="GuitarShop" style="height:44px; max-width:200px; object-fit:contain;">`;
+            });
+        }
 
         // ===== AUTH UI HELPERS =====
         function showAuthTab(tab) {
@@ -552,7 +586,9 @@
             const name = document.getElementById('regName').value.trim();
             const email = document.getElementById('regEmail').value.trim();
             const password = document.getElementById('regPassword').value;
+            const consent = document.getElementById('consentCheckbox')?.checked;
             if(!name || !email || !password) { showAuthError('registerError', 'Пожалуйста, заполните все поля.'); return; }
+            if(!consent) { showAuthError('registerError', 'Необходимо согласиться с политикой обработки персональных данных.'); return; }
             if(password.length < 6) { showAuthError('registerError', 'Пароль должен быть не менее 6 символов.'); return; }
             setAuthLoading('registerBtn', true, '<i class="fas fa-user-plus"></i> Создать аккаунт');
             try {
@@ -865,8 +901,8 @@
                         <i class="fas fa-arrow-left"></i> Вернуться к каталогу
                     </div>
                     <div class="detail-grid">
-                        <div class="detail-image ${product.imageClass || ''}">
-                            <span style="font-size:6rem;">${product.emoji || '🎸'}</span>
+                        <div class="detail-image ${product.image_url?'has-img':product.imageClass || ''}" style="${product.image_url?'padding:0;overflow:hidden;border-radius:32px;':''}">
+                            ${product.image_url?`<img src="${product.image_url}" alt="${product.title}" style="width:100%;height:100%;object-fit:cover;">`:`<span style="font-size:6rem;">${product.emoji || '🎸'}</span>`}
                             ${product.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':product.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':''}
                         </div>
                         <div class="detail-info">
@@ -1058,7 +1094,7 @@
                 const ratingHtml = rv && rv.count > 0
                     ? `<div class="product-rating"><span style="color:#f59e0b">${'★'.repeat(Math.round(rv.sum/rv.count))}${'☆'.repeat(5-Math.round(rv.sum/rv.count))}</span> <span>${(rv.sum/rv.count).toFixed(1)}</span> <span>(${rv.count})</span></div>`
                     : `<div class="product-rating" style="color:var(--text-muted); font-size:0.78rem;">Нет отзывов</div>`;
-                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.imageClass||''}">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button><span style="font-size:4rem;">${p.emoji || '🎸'}</span></div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand || ''}</div><div class="product-title">${p.title}</div>${ratingHtml}<div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
+                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.image_url?'has-img':p.imageClass||''}">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button>${p.image_url?`<img src="${p.image_url}" alt="${p.title}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">`:`<span style="font-size:4rem;">${p.emoji || '🎸'}</span>`}</div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand || ''}</div><div class="product-title">${p.title}</div>${ratingHtml}<div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
             }); grid.innerHTML=html;
         }
         
@@ -1370,6 +1406,50 @@
             document.getElementById('orderSuccessBanner').classList.add('visible');
         }
 
+        function openPrivacyPage() {
+            closeAuthOverlay(null, true);
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+            document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+            const pp = document.getElementById('privacyPage');
+            pp.classList.add('active-page');
+            pp.innerHTML = `
+                <div class="privacy-card">
+                    <a class="back-to-catalog" onclick="switchPage('catalog')"><i class="fas fa-arrow-left"></i> Назад в каталог</a>
+                    <h2>Политика обработки персональных данных</h2>
+                    <p class="privacy-date">Дата последнего обновления: 01 января 2026 г.</p>
+                    <h3>1. Общие положения</h3>
+                    <p>Настоящая политика конфиденциальности (далее — «Политика») определяет порядок обработки и защиты персональных данных пользователей интернет-магазина GuitarShop (далее — «Оператор»). Оператор обязуется соблюдать конфиденциальность персональных данных в соответствии с Федеральным законом № 152-ФЗ «О персональных данных».</p>
+                    <h3>2. Какие данные мы собираем</h3>
+                    <ul>
+                        <li>Имя и фамилия</li>
+                        <li>Адрес электронной почты</li>
+                        <li>Номер телефона (при оформлении заказа)</li>
+                        <li>История заказов и покупок</li>
+                    </ul>
+                    <h3>3. Цели обработки данных</h3>
+                    <p>Персональные данные используются исключительно для:</p>
+                    <ul>
+                        <li>Создания и управления учётной записью пользователя</li>
+                        <li>Оформления и обработки заказов</li>
+                        <li>Связи с пользователем по вопросам заказов</li>
+                        <li>Улучшения качества обслуживания</li>
+                    </ul>
+                    <h3>4. Хранение и защита данных</h3>
+                    <p>Данные хранятся на защищённых серверах с использованием современного шифрования. Доступ к персональным данным имеют только уполномоченные сотрудники, связанные с обработкой заказов. Данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством РФ.</p>
+                    <h3>5. Права пользователя</h3>
+                    <p>Вы вправе в любое время:</p>
+                    <ul>
+                        <li>Запросить сведения о ваших персональных данных</li>
+                        <li>Потребовать исправления или удаления данных</li>
+                        <li>Отозвать согласие на обработку персональных данных</li>
+                    </ul>
+                    <h3>6. Контакты</h3>
+                    <p>По вопросам обработки персональных данных обращайтесь: <strong>privacy@guitarshop.ru</strong></p>
+                </div>`;
+            window.scrollTo(0, 0);
+        }
+
+        window.openPrivacyPage = openPrivacyPage;
         window.switchPage = switchPage;
         window.switchToProduct = switchToProduct;
         window.updateCartQty = updateCartQty;
