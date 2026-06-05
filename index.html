@@ -1082,7 +1082,7 @@
             if(currentSort==='price-asc') f.sort((a,b)=>(a.oldPrice||a.price)-(b.oldPrice||b.price)); 
             else if(currentSort==='price-desc') f.sort((a,b)=>(b.oldPrice||b.price)-(a.oldPrice||a.price)); 
             else if(currentSort==='name') f.sort((a,b)=>a.title.localeCompare(b.title,'ru')); 
-            else if(currentSort==='rating') f.sort((a,b)=>(b.rating || 0)-(a.rating || 0)); 
+            else if(currentSort==='rating') f.sort((a,b)=>{ const ra=reviewsMap[String(a.id)]; const rb=reviewsMap[String(b.id)]; const avgA=ra&&ra.count>0?ra.sum/ra.count:0; const avgB=rb&&rb.count>0?rb.sum/rb.count:0; return avgB-avgA; }); 
             return f; 
         }
         
