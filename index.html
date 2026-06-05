@@ -856,8 +856,7 @@
                         <div class="detail-info">
                             <h2>${product.title}</h2>
                             <div class="product-rating" id="detailRating">
-                                ${'★'.repeat(Math.floor(product.rating||5))}${(product.rating||5)%1>=0.5?'★':'☆'}
-                                ${product.rating||5} <span id="detailReviewCount">(${product.reviews||0} отзывов)</span>
+                                <span style="color:#ccc">☆☆☆☆☆</span> <span id="detailReviewCount" style="color:var(--text-muted); font-size:0.85rem;">Загрузка отзывов...</span>
                             </div>
                             <div class="detail-price">${displayPrice.toLocaleString()} ₽${product.oldPrice?`<span class="detail-old-price">${product.oldPrice.toLocaleString()} ₽</span>`:''}</div>
                             <div class="detail-description"><strong>Описание:</strong> ${product.description || ''}</div>
@@ -981,6 +980,8 @@
             }
 
             if (!data || data.length === 0) {
+                const ratingEl = document.getElementById('detailRating');
+                if (ratingEl) ratingEl.innerHTML = `<span style="color:#ccc">☆☆☆☆☆</span> <span style="color:var(--text-muted); font-size:0.85rem;">Нет отзывов</span>`;
                 container.innerHTML = '<div class="reviews-empty">Пока нет отзывов. Будьте первым! 🎸</div>';
                 return;
             }
@@ -1028,7 +1029,7 @@
             const grid = document.getElementById('productsGrid'); const filtered = getFilteredProducts();
             if(!filtered.length) { grid.innerHTML='<div class="empty-state"><i class="fas fa-search"></i><p>Товары не найдены.</p></div>'; return; }
             let html = ''; filtered.forEach(p=>{ const inFav=favorites.includes(String(p.id)), cartItem=cart.find(c=>String(c.productId)===String(p.id)), displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:'', badgeHtml=p.badge==='sale'?'<span class="product-badge sale">СКИДКА</span>':p.badge==='new'?'<span class="product-badge new">НОВИНКА</span>':'';
-                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.imageClass||''}">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button><span style="font-size:4rem;">${p.emoji || '🎸'}</span></div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand || ''}</div><div class="product-title">${p.title}</div><div class="product-rating">${'★'.repeat(Math.floor(p.rating || 5))}${(p.rating || 5)%1>=0.5?'★':'☆'} ${p.rating || 5} <span>(${p.reviews || 0})</span></div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
+                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.imageClass||''}">${badgeHtml}<button class="favorite-btn ${inFav?'liked':''}" data-id="${p.id}"><i class="${inFav?'fas':'far'} fa-heart"></i></button><span style="font-size:4rem;">${p.emoji || '🎸'}</span></div><div class="product-info"><div class="product-category">${getCategoryName(p.category)} • ${p.brand || ''}</div><div class="product-title">${p.title}</div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn ${cartItem?'in-cart':''}" data-id="${p.id}"><i class="fas ${cartItem?'fa-check':'fa-cart-plus'}"></i></button></div></div></div>`;
             }); grid.innerHTML=html;
         }
         
