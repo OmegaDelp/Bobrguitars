@@ -1280,12 +1280,6 @@
             }); 
             html+=`<div class="cart-summary"><p>Товаров: ${cart.reduce((s,i)=>s+i.qty,0)} шт.</p><p>Итого: <strong>${total.toLocaleString()} ₽</strong></p><button class="checkout-btn" id="orderBtn" style="width:auto;">Оформить заказ</button></div></div>`; 
             container.innerHTML=html; 
-            
-            document.getElementById('orderBtn')?.addEventListener('click',()=>{ 
-                if(!cart.length) return;
-                if(!currentUser.email) { openAuthOverlay('Войдите, чтобы оформить заказ'); return; }
-                openPhoneModal();
-            }); 
         }
 
         function renderFavorites() { 
@@ -1386,6 +1380,15 @@
 
             document.getElementById('productsGrid').addEventListener('click', handleGridClick);
             document.getElementById('favoritesPage').addEventListener('click', handleGridClick);
+
+            // Делегирование для кнопки "Оформить заказ" в корзине
+            document.getElementById('cartPage').addEventListener('click', (e) => {
+                if (e.target.closest('#orderBtn')) {
+                    if (!cart.length) return;
+                    if (!currentUser.email) { openAuthOverlay('Войдите, чтобы оформить заказ'); return; }
+                    openPhoneModal();
+                }
+            });
             
             // Навигация
             document.querySelectorAll('.nav-links a[data-nav]').forEach(link=>{ 
@@ -1730,14 +1733,16 @@
             if (activeBtn) activeBtn.classList.add('active');
 
         }
-        const _origSP = window.switchPage;
-        window.switchPage = function(page) { if (_origSP) _origSP(page); syncMobileNav(page); };
-        window.updateCartBadge = (function(orig) { return function() {
-            if (orig) orig.call(this);
-            const total = (window.cart || []).reduce((s,i) => s + i.qty, 0);
-            const badge = document.getElementById('mobileCartBadge');
-            if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'flex' : 'none'; }
-        }; })(window.updateCartBadge);
+        document.addEventListener('DOMContentLoaded', function() {
+            const _origSP = window.switchPage;
+            window.switchPage = function(page) { if (_origSP) _origSP(page); syncMobileNav(page); };
+            window.updateCartBadge = (function(orig) { return function() {
+                if (orig) orig.call(this);
+                const total = (window.cart || []).reduce((s,i) => s + i.qty, 0);
+                const badge = document.getElementById('mobileCartBadge');
+                if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'flex' : 'none'; }
+            }; })(window.updateCartBadge);
+        });
     <\/script>
 
     <!-- ===== PHONE MODAL ===== -->
