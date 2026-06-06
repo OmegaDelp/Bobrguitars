@@ -558,6 +558,40 @@
         </div>
     </div>
 
+    <!-- ===== PHONE MODAL ===== -->
+    <div id="phoneModal">
+        <div class="phone-modal-card">
+            <span style="font-size:2.5rem; display:block; margin-bottom:12px;">📞</span>
+            <h3>Оформление заказа</h3>
+            <p>Укажите номер телефона — мы свяжемся с вами для подтверждения</p>
+            <div class="auth-field">
+                <label style="font-weight:600; font-size:0.85rem; display:block; margin-bottom:6px;">Номер телефона</label>
+                <input type="tel" id="orderPhone" placeholder="+7 (___) ___-__-__" maxlength="18">
+            </div>
+            <div id="phoneError" style="color:#c0392b; font-size:0.82rem; margin-top:8px; display:none;"></div>
+            <div class="phone-modal-actions">
+                <button class="phone-cancel-btn" id="phoneCancelBtn">Отмена</button>
+                <button class="checkout-btn" id="phoneConfirmBtn" style="flex:2; margin-top:0;">
+                    <i class="fas fa-check"></i> Подтвердить заказ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ORDER SUCCESS BANNER ===== -->
+    <div id="orderSuccessBanner">
+        <div class="success-card">
+            <span class="success-icon">🎸</span>
+            <h2>Заказ оформлен!</h2>
+            <div class="success-tagline">⏱ Мы свяжемся с вами<br>в течение 15 минут</div>
+            <p class="success-details">
+                Наш менеджер позвонит на указанный номер<br>
+                для подтверждения деталей заказа
+            </p>
+            <button class="success-close-btn" id="successCloseBtn">Отлично!</button>
+        </div>
+    </div>
+
     <div class="navbar">
         <div class="container nav-inner">
             <div class="logo">
@@ -1744,40 +1778,6 @@
             }; })(window.updateCartBadge);
         });
     <\/script>
-
-    <!-- ===== PHONE MODAL ===== -->
-    <div id="phoneModal">
-        <div class="phone-modal-card">
-            <span style="font-size:2.5rem; display:block; margin-bottom:12px;">📞</span>
-            <h3>Оформление заказа</h3>
-            <p>Укажите номер телефона — мы свяжемся с вами для подтверждения</p>
-            <div class="auth-field">
-                <label style="font-weight:600; font-size:0.85rem; display:block; margin-bottom:6px;">Номер телефона</label>
-                <input type="tel" id="orderPhone" placeholder="+7 (___) ___-__-__" maxlength="18">
-            </div>
-            <div id="phoneError" style="color:#c0392b; font-size:0.82rem; margin-top:8px; display:none;"></div>
-            <div class="phone-modal-actions">
-                <button class="phone-cancel-btn" id="phoneCancelBtn">Отмена</button>
-                <button class="checkout-btn" id="phoneConfirmBtn" style="flex:2; margin-top:0;">
-                    <i class="fas fa-check"></i> Подтвердить заказ
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== ORDER SUCCESS BANNER ===== -->
-    <div id="orderSuccessBanner">
-        <div class="success-card">
-            <span class="success-icon">🎸</span>
-            <h2>Заказ оформлен!</h2>
-            <div class="success-tagline">⏱ Мы свяжемся с вами<br>в течение 15 минут</div>
-            <p class="success-details">
-                Наш менеджер позвонит на указанный номер<br>
-                для подтверждения деталей заказа
-            </p>
-            <button class="success-close-btn" id="successCloseBtn">Отлично!</button>
-        </div>
-    </div>
 
 </body>
 </html>
