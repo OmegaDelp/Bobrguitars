@@ -1328,7 +1328,7 @@
             let html='<h2 style="margin-bottom:20px;">❤️ Избранное</h2><div class="favorites-grid">'; 
             favProducts.forEach(p=>{ 
                 const displayPrice=p.oldPrice||p.price, oldPriceHtml=p.oldPrice?`<span class="old-price">${p.price.toLocaleString()} ₽</span>`:''; 
-                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.imageClass||''}" style="height:160px;"><button class="favorite-btn liked" data-id="${p.id}"><i class="fas fa-heart"></i></button><span style="font-size:3rem;">${p.emoji || '🎸'}</span></div><div class="product-info"><div class="product-title">${p.title}</div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn" data-id="${p.id}"><i class="fas fa-cart-plus"></i></button></div></div></div>`; 
+                html+=`<div class="product-card" data-id="${p.id}"><div class="product-image ${p.image_url?'has-img':p.imageClass||''}" style="height:160px;"><button class="favorite-btn liked" data-id="${p.id}"><i class="fas fa-heart"></i></button>${p.image_url?`<img src="${p.image_url}" alt="${p.title}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">`:`<span style="font-size:3rem;">${p.emoji || '🎸'}</span>`}</div><div class="product-info"><div class="product-title">${p.title}</div><div class="product-price-row"><div class="product-price">${displayPrice.toLocaleString()} ₽ ${oldPriceHtml}</div><button class="add-to-cart-btn" data-id="${p.id}"><i class="fas fa-cart-plus"></i></button></div></div></div>`; 
             }); 
             html+='</div>'; 
             container.innerHTML=html; 
