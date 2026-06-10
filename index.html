@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #FFFFFF; color: #1e1e2a; line-height: 1.4; }
@@ -1577,6 +1578,35 @@
         }
 
         // ===== PLACE ORDER → SUPABASE =====
+        // ===== EMAILJS CONFIG =====
+        // Замените эти значения на свои из https://www.emailjs.com
+        const EMAILJS_SERVICE_ID  = 'service_l29uwhj';   // например: 'service_abc123'
+        const EMAILJS_TEMPLATE_ID = 'template_mxxrdg2';  // например: 'template_xyz456'
+        const EMAILJS_PUBLIC_KEY  = '42MnejYtH6TboBd3I';   // например: 'AbCdEfGhIjKlMnOp'
+        const MANAGER_EMAIL       = 'putinzev.ulya@gmail.com'; // ← ваш email менеджера
+
+        async function sendOrderEmail(orderData) {
+            try {
+                emailjs.init(EMAILJS_PUBLIC_KEY);
+                const itemsList = orderData.items
+                    .map(i => `• ${i.title} × ${i.qty} — ${(i.price * i.qty).toLocaleString('ru-RU')} ₽`)
+                    .join('\n');
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                    to_email:    MANAGER_EMAIL,
+                    order_id:    String(orderData.id).slice(-6).toUpperCase(),
+                    client_name: orderData.userName,
+                    client_email:orderData.userEmail,
+                    client_phone:orderData.phone,
+                    items_list:  itemsList,
+                    total:       orderData.total.toLocaleString('ru-RU') + ' ₽',
+                    order_date:  new Date().toLocaleString('ru-RU'),
+                });
+                console.log('✅ Email менеджеру отправлен');
+            } catch(e) {
+                console.warn('⚠️ Email не отправлен:', e);
+            }
+        }
+
         async function placeOrder(phone) {
             if (!cart.length) return;
 
@@ -1610,6 +1640,16 @@
                 if (error) throw error;
 
                 console.log('Заказ сохранён:', data);
+
+                // Отправляем email менеджеру
+                await sendOrderEmail({
+                    id:        data.id,
+                    userName:  currentUser.name,
+                    userEmail: currentUser.email,
+                    phone,
+                    items:     orderItems,
+                    total:     Math.round(total),
+                });
 
                 // Добавляем в локальный список заказов
                 currentUser.orders = currentUser.orders || [];
