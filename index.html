@@ -95,7 +95,11 @@
         .cart-summary strong { font-size: 1.5rem; color: var(--primary); }
         .contacts-card { background: white; border-radius: 28px; border: 1px solid var(--gray-border); padding: 28px; box-shadow: var(--shadow); }
         .profile-card { background: white; border-radius: 28px; border: 1px solid var(--gray-border); padding: 30px; text-align: center; box-shadow: var(--shadow); }
-        .order-history-item { background: var(--gray-light); border-radius: 16px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+        .order-history-item { background: var(--gray-light); border-radius: 16px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .status-processing { background: #fff8e1; color: #b8860b; border-radius: 20px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600; }
+        .status-shipped    { background: #e3f2fd; color: #1565c0; border-radius: 20px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600; }
+        .status-delivered  { background: #e8f5e9; color: #2e7d32; border-radius: 20px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600; }
+        .status-cancelled  { background: #fce4ec; color: #c62828; border-radius: 20px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600; }
         .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
         .empty-state i { font-size: 3rem; margin-bottom: 16px; display: block; }
         footer { text-align: center; padding: 32px 0; border-top: 1px solid var(--gray-border); margin-top: 20px; color: var(--text-muted); }
@@ -1353,58 +1357,13 @@
         <p>Бесплатная парковка для посетителей магазина на 30 мест.</p>
     </div>
 </div>`; }
-        function renderProfile() {
-            const ordersHtml = (!currentUser.orders || currentUser.orders.length === 0)
-                ? '<p style="color:var(--text-muted);">У вас пока нет заказов.</p>'
-                : currentUser.orders.map(o => `
-                    <div class="order-history-item">
-                        <div>
-                            <strong>Заказ #${o.id.toString().slice(-6)}</strong>
-                            <div style="font-size:0.8rem;">${o.date} • ${o.items.length} поз.</div>
-                        </div>
-                        <div>${o.total.toLocaleString()} ₽</div>
-                        <div>
-                            <select onchange="updateOrderStatus('${o.id}', this.value)"
-                                style="border:1px solid var(--gray-border); border-radius:10px;
-                                       padding:6px 10px; font-size:0.85rem; cursor:pointer;
-                                       background:white; font-family:inherit; color:#1e1e2a;">
-                                <option value="processing" ${o.status === 'processing' ? 'selected' : ''}>⏳ В обработке</option>
-                                <option value="shipped"    ${o.status === 'shipped'    ? 'selected' : ''}>🚚 Отправлен</option>
-                                <option value="delivered"  ${o.status === 'delivered'  ? 'selected' : ''}>✅ Доставлен</option>
-                                <option value="cancelled"  ${o.status === 'cancelled'  ? 'selected' : ''}>❌ Отменён</option>
-                            </select>
-                        </div>
-                    </div>`
-                ).join('');
-            document.getElementById('profilePage').innerHTML = `
-                <div class="profile-card">
-                    <div class="avatar-sm" style="width:80px; height:80px; font-size:2rem; margin:0 auto; background:var(--primary);">${currentUser.avatar || 'U'}</div>
-                    <h2 style="margin-top:12px;">${currentUser.name || 'Пользователь'}</h2>
-                    <p style="color:var(--text-muted);">Постоянный покупатель</p>
-                    <div style="display:flex; justify-content:center; gap:32px; margin:20px 0;">
-                        <div><strong>${currentUser.orders ? currentUser.orders.length : 0}</strong> заказов</div>
-                        <div><strong>${favorites.length}</strong> в избранном</div>
-                    </div>
-                </div>
-                <h3 style="margin:28px 0 16px;">📦 История заказов</h3>
-                <div style="background:white; border-radius:28px; border:1px solid var(--gray-border); padding:20px;">${ordersHtml}</div>`;
+        function getStatusLabel(status) {
+            return { processing: '⏳ В обработке', shipped: '🚚 Отправлен', delivered: '✅ Доставлен', cancelled: '❌ Отменён' }[status] || '⏳ В обработке';
         }
-
-        async function updateOrderStatus(orderId, newStatus) {
-            const { error } = await supabaseClient
-                .from('orders')
-                .update({ status: newStatus })
-                .eq('id', orderId);
-
-            if (error) {
-                showToast('❌ Ошибка обновления статуса');
-                console.error('updateOrderStatus error:', error);
-            } else {
-                const order = currentUser.orders.find(o => String(o.id) === String(orderId));
-                if (order) order.status = newStatus;
-                showToast('✅ Статус заказа обновлён');
-            }
+        function getStatusClass(status) {
+            return { processing: 'status-processing', shipped: 'status-shipped', delivered: 'status-delivered', cancelled: 'status-cancelled' }[status] || 'status-processing';
         }
+        function renderProfile() { const ordersHtml = (!currentUser.orders || currentUser.orders.length===0)?'<p style="color:var(--text-muted);">У вас пока нет заказов.</p>':currentUser.orders.map(o=>`<div class="order-history-item"><div><strong>Заказ #${o.id.toString().slice(-6)}</strong><div style="font-size:0.8rem;">${o.date} • ${o.items.length} поз.</div></div><div>${o.total.toLocaleString()} ₽</div><div class="${getStatusClass(o.status)}">${getStatusLabel(o.status)}</div></div>`).join(''); document.getElementById('profilePage').innerHTML = `<div class="profile-card"><div class="avatar-sm" style="width:80px; height:80px; font-size:2rem; margin:0 auto; background:var(--primary);">${currentUser.avatar || 'U'}</div><h2 style="margin-top:12px;">${currentUser.name || 'Пользователь'}</h2><p style="color:var(--text-muted);">Постоянный покупатель</p><div style="display:flex; justify-content:center; gap:32px; margin:20px 0;"><div><strong>${currentUser.orders ? currentUser.orders.length : 0}</strong> заказов</div><div><strong>${favorites.length}</strong> в избранном</div></div></div><h3 style="margin:28px 0 16px;">📦 История заказов</h3><div style="background:white; border-radius:28px; border:1px solid var(--gray-border); padding:20px;">${ordersHtml}</div>`; }
         
         function switchPage(pageId) { 
             if((pageId==='profile') && !currentUser.email) { openAuthOverlay('Войдите, чтобы открыть профиль'); return; }
